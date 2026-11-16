@@ -39,6 +39,7 @@ body:not(.g) :is(#c, #fx) { filter: blur(1vmax) brightness(.5); transform: scale
 /* the start page's screens: #m[data-s] is home (logo and Start), trips, name or dives */
 .scr { display: none; }
 #m[data-s=trips] #trips, #m[data-s=dives] #dives { display: grid; justify-items: center; gap: .9em; }
+#trips .back { margin-top: .8em; }
 #m[data-s=name] #who { display: block; }
 #m:not([data-s=home]) :is(#logo, #sub, #a) { display: none; }
 .scr h2 { margin: 0; font: italic 400 2.6em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; -webkit-text-stroke: .03em #071a3a; text-shadow: .06em .06em 0 #071a3a; transform: skewX(-8deg); }
@@ -46,16 +47,17 @@ body:not(.g) :is(#c, #fx) { filter: blur(1vmax) brightness(.5); transform: scale
 .lnk, .lnk:hover { padding: .3em .8em; background: none; box-shadow: none; color: #9ff6ff; font-size: .75em; text-decoration: underline; }
 .lnk[hidden] { display: none; }
 /* a trip: a square card with a photo of the place, its name, and its top score underneath */
-.tcard { display: grid; justify-items: center; gap: .35em; width: 14.5em; padding: .5em .5em .6em; border-radius: .9em; background: #03131cd9; box-shadow: inset 0 0 0 3px #ffe24a, 0 .6em 2em #000a; }
-.tcard .go { display: grid; justify-items: center; gap: .3em; width: 100%; padding: 0 0 .3em; background: none; box-shadow: none; color: #fff; text-transform: none; letter-spacing: 0; }
+.tcard { display: grid; grid-template-rows: 1fr auto; justify-items: center; gap: .7em; width: 14.5em; }
+.tcard .go, .tcard .face { display: grid; justify-items: center; align-content: start; gap: .3em; width: 100%; padding: .5em .5em .8em; border-radius: .9em; background: #03131cd9; box-shadow: inset 0 0 0 3px #ffe24a, 0 .6em 2em #000a; color: #fff; text-transform: none; letter-spacing: 0; }
+/* the hi-score and the Top 10 button sit under the card, not in it */
+.tcard .under { position: relative; z-index: 2; display: grid; justify-items: center; min-height: 2.6em; } /* above the card's shadow, which is bigger than the gap */
 .tcard canvas, .dcard canvas { display: block; width: 100% !important; height: auto !important; border-radius: .5em; }
 .tcard b, .dcard b, .tslot b { font: italic 400 1.5em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; }
 .tcard span, .dcard span, .tslot span { font-size: .72em; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #9ff6ff; }
-.tcard .go:focus-visible { outline: none; } .tcard:has(.go:focus-visible) { box-shadow: inset 0 0 0 3px #fff, 0 .6em 2em #000a; }
-.tcard .hs { font: italic 400 1em/1 var(--arc); letter-spacing: .1em; color: #ff4d6d; } .tcard .hs b { font-size: 1em; color: #fff; margin-left: .3em; }
+.tcard .go:focus-visible { outline: none; box-shadow: inset 0 0 0 3px #fff, 0 .6em 2em #000a; }
 .tcard .top { padding: .3em .9em; background: none; box-shadow: inset 0 0 0 2px #ffe24a88; color: #ffe24a; font-size: .65em; }
 .tcard .top::before { content: '\1F3C6'; margin-right: .1em; }
-.tcard.soon { align-content: center; box-shadow: inset 0 0 0 3px #7ff3ff33; background: #03131c88; opacity: .7; }
+.tcard.soon .face { align-content: center; box-shadow: inset 0 0 0 3px #7ff3ff33; background: #03131c88; opacity: .7; }
 .tcard.soon i { width: 3em; height: 3em; border-radius: 50%; box-shadow: inset 0 0 0 3px #7ff3ff55; }
 .tcard.soon i::before { content: '?'; display: grid; place-content: center; height: 100%; font: 400 1.8em var(--arc); font-style: normal; color: #7ff3ff88; }
 .tcard.soon b { color: #7ff3ffaa; }

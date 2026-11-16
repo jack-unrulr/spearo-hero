@@ -459,20 +459,19 @@ function arcGo() { // the home screen's button: resume a paused dive (true), or 
   if (TRIP.on && RD.phase !== 'idle') return true;
   showTrips(); return false;
 }
-// the trip picker: a card per location with a photo of its first site and its top score
+// the trip picker: a card per location with a photo of its first site, and its Top 10 button underneath
 function showTrips() {
   const el = $('tripc'); el.innerHTML = '';
   for (const l of LOCATIONS) {
-    const c = document.createElement('div'), b = document.createElement('button'), top = (WORLD[l.board] || localBoard(l))[0];
+    const c = document.createElement('div'), b = document.createElement('button');
     c.className = 'tcard'; b.className = 'go'; b.append(shot(l, 0, 208, 150));
     b.insertAdjacentHTML('beforeend', `<b>${l.name}</b><span>${l.blurb} · ${l.sites.length} dives</span>`);
     b.onclick = () => { sound(); useLocation(l); try { localStorage.setItem('spearo.loc', l.id); } catch {} buildCard(); showHi(); askName(); };
-    c.append(b); c.insertAdjacentHTML('beforeend', '<p class=hs>Hi-score <b></b></p><button class=top>Top 10</button>');
-    c.querySelector('.hs b').textContent = top ? `${top.name} ${top.score}` : '— — —';
+    c.append(b); c.insertAdjacentHTML('beforeend', '<div class=under><button class=top>Top 10</button></div>');
     c.querySelector('.top').onclick = () => openBoard(l);
-    el.append(c); lbFetch(l).then((w) => { if (w && w[0] && c.isConnected) c.querySelector('.hs b').textContent = `${w[0].name} ${w[0].score}`; });
+    el.append(c);
   }
-  el.insertAdjacentHTML('beforeend', '<div class="tcard soon"><i></i><b>More waters</b><span>Coming soon</span></div>');
+  el.insertAdjacentHTML('beforeend', '<div class="tcard soon"><div class=face><i></i><b>More waters</b><span>Coming soon</span></div><div class=under></div></div>');
   show('trips'); setTimeout(() => el.querySelector('.go').focus(), 100);
 }
 // ---------------------------------------------------------------- players
@@ -504,9 +503,10 @@ function showDives() {
     el.append(b);
   });
   const T = LOC.trophy, td = TRIP.dives[TRIP.trophy], got = td && td.st.trophy, r = got && td.rows.find((r) => r.s === T && r.outcome !== 'GOT AWAY');
+  const brk = td && !got && td.rows.some((r) => r.s === T && r.outcome === 'GOT AWAY'); // hit, but it tore free and got away
   const slot = document.createElement('div'); slot.className = 'tslot' + (got ? ' got' : td ? ' miss' : '');
   slot.append(fishCanvas(T, 156, 65));
-  slot.insertAdjacentHTML('beforeend', `<b>Trophy</b><span>${got ? `${SPEC[T].n}${r ? ' · ' + r.inch + ' in' : ''}` : td ? 'Missed' : `${SPEC[T].n}<br>on one of these dives`}</span>`);
+  slot.insertAdjacentHTML('beforeend', `<b>Trophy</b><span>${got ? `${SPEC[T].n}${r ? ' · ' + r.inch + ' in' : ''}` : td ? (brk ? 'Broke off' : 'Missed') : `${SPEC[T].n}<br>on one of these dives`}</span>`);
   el.append(slot);
   const left = tripLeft(); $('dvh').textContent = LOC.name;
   $('dvs').textContent = `${PLAYER} · ${tripScore()} pts · ${left === LOC.sites.length ? 'pick a dive, any order' : left + (left === 1 ? ' dive left' : ' dives left')}`;
@@ -790,10 +790,11 @@ function showFinal() {
   tallyMode = 'trip'; RD.lbP = lbFetch();
   const S = tripStats(), total = tripScore(), T = LOC.trophy, td = TRIP.dives[TRIP.trophy], tr = td.rows.find((r) => r.s === T && r.outcome !== 'GOT AWAY');
   const tp = td.rows.filter((r) => r.s === T).reduce((a, r) => a + r.pts, 0); // what the trophy fish paid (0 if it never came to the spear)
+  const brk = td.rows.some((r) => r.s === T && r.outcome === 'GOT AWAY'); // hit but it tore free: paid something, still not landed
   const list = TRIP.order.map((k) => { const d = TRIP.dives[k];
     return rowEl('trip', `<span>${LOC.sites[k].name} <i>${d.st.landed} landed</i></span><span class=o>${d.end === 'protected' ? 'WRONG FISH' : d.end === 'air' ? 'OUT OF AIR' : 'ALL CLEAR'}</span><b>${d.score}</b>`, shot(LOC, k, 96, 40)); });
   list.push(td.st.trophy ? rowEl('troph', `<span>${SPEC[T].n} <i>${tr ? tr.inch + ' in' : ''}</i><em>Trophy</em></span><span class=o>LANDED</span><b>+${tp}</b>`, silhouette(T, null, ''))
-    : rowEl('lost', `<span>${SPEC[T].n}</span><span class=o>TROPHY MISSED</span><b>${tp ? '+' + tp : 0}</b>`, silhouette(T, null, 'lost')));
+    : rowEl('lost', `<span>${SPEC[T].n}</span><span class=o>${brk ? 'BROKE OFF' : 'TROPHY MISSED'}</span><b>${tp ? '+' + tp : 0}</b>`, silhouette(T, null, 'lost')));
   tallyRun('Trip over', `${LOC.name} · ${PLAYER}`, list, total, () => { showStats(S, total, '', LOC.sites.length); afterBoard(); });
 }
 // a dive or a trip (n dives) in numbers, a verdict on dinner, and a few badges

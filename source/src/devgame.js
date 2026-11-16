@@ -15,6 +15,13 @@
     go: (seed, name = 'TST') => { if (iniOn) closeName(); if (TRIP.on) endTrip(); PLAYER = name; newTrip(seed); TRIP.trophy = 0; startDive(0, seed); return RD.seed; },
     dive: (k, seed) => { if (RD.phase === 'tally') leaveTally(); startDive(k, seed); return RD.seed; }, // the trip's dive at site k
     trip: () => ({ on: TRIP.on, trophy: TRIP.trophy, cur: TRIP.cur, order: TRIP.order, scores: TRIP.dives.map((d) => d ? d.score : null), total: tripScore(), left: TRIP.on ? tripLeft() : 0 }),
+    // trip results with made-up dives: how the lingcod went ('landed', 'broke' or 'missed')
+    fakeTrip: (how) => {
+      if (TRIP.on) endTrip(); PLAYER = 'TST'; newTrip(1); TRIP.trophy = 0; const T = LOC.trophy;
+      const rows = how === 'landed' ? [{ s: T, n: 'Lingcod', inch: 35, outcome: 'STONED', pts: 1500 }] : how === 'broke' ? [{ s: T, n: 'Lingcod', inch: 35, outcome: 'GOT AWAY', pts: 400 }] : [];
+      TRIP.dives = LOC.sites.map((_, k) => ({ score: 900 + 100 * k + (k ? 0 : rows.reduce((a, r) => a + r.pts, 0)), st: { shots: 3, hits: 2, hitShots: 2, stoned: 1, landed: 2, lost: 0, doubles: 0, biggest: 20, best: 1, bonus: 0, threads: 0, trophy: k === 0 && how === 'landed' ? 1 : 0 }, rows: k ? [] : rows, end: 'air', seed: k }));
+      TRIP.order = [0, 1, 2]; TRIP.cur = 2; ui(false); RD.phase = 'tally'; RD.endT2 = ASCENT; RD.score = tripScore(); showFinal();
+    },
     // try a dive site: the view from x, z facing yaw (for choosing sites)
     site: (x, z, yaw, eye = 0.9) => { LOC.sites[0].spot = { x, z, yaw, eye }; useSite(0); newRound(1); RD.phase = 'idle'; camera(0); return SPOT_Y; },
     speed: (k) => { RD.speed = k; },

@@ -30,7 +30,7 @@ check(await c.ev(`${Q('#opt')}.hidden && document.body.className === "m"`), 'Esc
 // ---- Start > trip picker (a card per location, its Top 10 popup) > Player 1's name > dive picker
 await c.ev(`${Q('#d')}.click()`);
 check(await until('TT.arc.state().scr === "trips" && document.querySelectorAll("#tripc .tcard .go").length === 1', 3000), 'Start opens the trip picker: one trip card');
-check(await c.ev(`${Q('#tripc .tcard canvas')}.width > 0 && ${Q('#tripc .hs')}.textContent.includes("Hi-score")`), 'the card has a photo and a hi-score line');
+check(await c.ev(`${Q('#tripc .tcard canvas')}.width > 0 && !${Q('#tripc .hs')} && !!${Q('#tripc .under .top')}`), 'the card has a photo; Top 10 sits under it, no hi-score line');
 await c.sleep(300); await snap('0b-trips');
 await c.ev(`${Q('#tripc .top')}.click()`); await c.sleep(200);
 check(await c.ev('!document.getElementById("pop").hidden && document.getElementById("popl").textContent.includes("No scores yet")'), 'Top 10 opens the leaderboard popup');
@@ -215,6 +215,9 @@ check(await c.ev('document.getElementById("rows").getBoundingClientRect().right 
 check(await c.ev('document.getElementById("th").textContent === "Trip over" && document.querySelectorAll("#rows .row").length === 4'), 'a row per dive and one for the trophy');
 check(await until(`document.getElementById("tsc").textContent === "${trip.total}"`, 5000), 'the total is the trip score');
 check((await c.ev('document.querySelector("#rows .row:last-child b").textContent')).length > 0, 'the trophy row shows its points (0 if missed)');
+{ const o = await c.ev('document.querySelector("#rows .row:last-child .o").textContent'), pts = await c.ev('document.querySelector("#rows .row:last-child b").textContent');
+  log('trophy row:', o, pts);
+  check(o === 'LANDED' || (pts === '0' ? o === 'TROPHY MISSED' : o === 'BROKE OFF'), 'the trophy row says landed, missed (0 pts) or broke off (some pts)'); }
 check(await c.ev('document.querySelectorAll("#stats p").length === 8 && document.getElementById("again").textContent === "Play again"'), 'trip stats and Play again');
 if (trip.total > 0) {
   const lb = await c.ev('JSON.parse(localStorage.getItem("spearo.scores.tofino-trip"))');
