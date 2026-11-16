@@ -282,6 +282,7 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 @keyframes rowin { from { opacity: 0; transform: translateX(-1em); } }
 #ini #lt { font: 900 2em/1.2 ui-monospace, monospace; letter-spacing: .15em; color: #fff27a; }
 #lbt:empty { display: none; }
+#chg { display: block; margin: .3em auto 0; padding: 0; border: 0; background: none; font: inherit; color: #9ff6ff; text-decoration: underline; cursor: pointer; } #chg[hidden] { display: none; } #chg:disabled { text-decoration: none; cursor: default; }
 #lb, .lb { margin: 0; padding: 0; list-style: none; counter-reset: r; display: grid; grid-template-columns: repeat(2, 12.5em); gap: .15em 1.5em; }
 #lb li, .lb li { counter-increment: r; display: grid; grid-template-columns: 1.8em 5em 1fr; text-align: left; }
 #lb li::before, .lb li::before { content: counter(r) '.'; color: #7ff3ff99; }

@@ -320,7 +320,7 @@ document.body.insertAdjacentHTML('beforeend', `<canvas id=fx></canvas>
 <div id=hud><p id=sc0>1UP <b id=sc>0</b></p><div id=air><i></i><span>AIR</span></div></div>
 <div id=card></div>
 <p id=big></p>
-<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><div id=ini hidden><p>High score! Enter your name</p><p id=lt><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b></p><p class=k>Up to 7 letters or numbers · Enter</p></div><p id=lbt class=k></p><ol id=lb></ol><button id=again>Dive again</button></div></div>`);
+<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><div id=ini hidden><p>High score! Enter your name</p><p id=lt><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b></p><p class=k>Up to 7 letters or numbers · Enter</p></div><p id=lbt class=k></p><ol id=lb></ol><button id=chg class=k hidden></button><button id=again>Dive again</button></div></div>`);
 // the fx canvas has to come after the scene canvas but under the HUD: move it next to the canvas
 canvas.after($('fx'));
 const HUD = { sc: $('sc'), air: $('air'), fill: $('air').firstChild, card: $('card'), big: $('big'), tally: $('tally') };
@@ -650,7 +650,7 @@ function showTally() {
   $('d').textContent = 'Start'; $('ps').hidden = false;
   body.classList.add('tal'); HUD.tally.className = 'on';
   $('why').textContent = RD.end === 'protected' ? 'Speared a surfperch' : RD.end === 'air' ? 'Out of air' : 'Nothing left to hunt';
-  const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; statsShown = 0; $('ini').hidden = true; $('again').hidden = true;
+  const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; statsShown = 0; $('ini').hidden = true; $('again').hidden = true; $('chg').hidden = true;
   for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
   const list = RD.rows.length ? RD.rows : [{ none: 1 }];
   list.forEach((r, k) => tallyTimers.push(setTimeout(() => {
@@ -700,11 +700,15 @@ function afterCount() {
 async function afterBoard() {
   const seed = RD.seed; await RD.lbP; if (RD.phase !== 'tally' || RD.seed !== seed || iniOn || !$('again').hidden) return;
   const b = world || localBoard(), qual = RD.score > 0 && (b.length < 10 || RD.score > b[b.length - 1].score);
-  if (qual) { iniOn = true; ini = ''; $('ini').hidden = false; showIni(); } else showBoard(b, -1);
+  if (!qual) showBoard(b, -1);
+  else if (myName()) submitIni(myName()); // asked once per device, then every qualifying score is sent under it
+  else { iniOn = true; ini = ''; $('ini').hidden = false; showIni(); }
 }
+// the name a player entered once, kept on this device; 'Not NAME?' under the board forgets it so the next score asks
+const myName = () => { try { const v = localStorage.getItem('spearo.name'); return /^[A-Z0-9]{1,7}$/.test(v || '') ? v : ''; } catch { return ''; } };
 function showIni() { const b = $('lt').children; for (let k = 0; k < NAMEN; k++) b[k].textContent = ini[k] || '_'; }
 async function submitIni(name) {
-  iniOn = false; $('ini').hidden = true;
+  iniOn = false; $('ini').hidden = true; try { localStorage.setItem('spearo.name', name); } catch {}
   const lb = lbLoad(), e = { i: name, s: RD.score, r: RD.seed, d: Date.now() };
   lb.push(e); lb.sort((a, b) => b.s - a.s || a.d - b.d); lb.length = min(lb.length, 10); lbSave(lb); showHi();
   $('lbt').textContent = LBU ? 'Sending…' : ''; $('again').hidden = true;
@@ -717,6 +721,7 @@ function showBoard(b, me, rank) {
   $('lbt').textContent = (b === world || rank ? 'World top 10' : 'Top 10 on this device') + ' · ' + LOC.name + (rank ? ` · you are #${rank}` : '') + (LBU && !world ? ' · world board offline' : '');
   b.forEach((e, k) => { const li = document.createElement('li'); if (k === me) li.className = 'me'; li.innerHTML = `<b></b><span>${e.score}</span>`; li.firstChild.textContent = e.name; ol.append(li); });
   if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
+  const nm = myName(), ch = $('chg'); ch.hidden = !nm; ch.disabled = false; ch.textContent = `Not ${nm}?`;
   $('again').hidden = false; setTimeout(() => $('again').focus(), 50);
 }
 addEventListener('keydown', (e) => {
@@ -746,6 +751,7 @@ const closeBoard = () => { if ($('pop').hidden) return false; $('pop').hidden = 
 $('popx').onclick = closeBoard;
 $('pop').onclick = (e) => { if (e.target === $('pop')) closeBoard(); };
 addEventListener('keydown', (e) => { if (e.code === 'Escape' && closeBoard()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+$('chg').onclick = () => { try { localStorage.removeItem('spearo.name'); } catch {} const ch = $('chg'); ch.textContent = 'Your next high score will ask for a name'; ch.disabled = true; };
 $('again').onclick = () => { if (RD.phase === 'tally') { sound(); startRound((Math.random() * 99999 | 0) + 1); } };
 
 // ---------------------------------------------------------------- start: the spot behind the menu, a few garibaldi

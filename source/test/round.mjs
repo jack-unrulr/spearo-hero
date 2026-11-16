@@ -141,6 +141,8 @@ if (s1.score > 0) {
   check(await until('TT.arc.state().board', 3000), 'leaderboard shown');
   const lb = await c.ev('JSON.parse(localStorage.getItem("spearo.scores.tofino"))');
   check(lb && lb[0].i === 'TST' && lb[0].s === s1.score && lb[0].r === seed, 'score saved under TST with the round seed');
+  check(await c.ev('localStorage.getItem("spearo.name")') === 'TST', 'name remembered on this device');
+  check(await c.ev('document.getElementById("chg").textContent') === 'Not TST?', '"Not TST?" link under the board');
   if (LB) {
     const w = await (await fetch(LB + '/scores?loc=tofino')).json();
     check(w.top.some((e) => e.name === 'TST' && e.score === s1.score && e.seed === seed), 'score is on the world board (server)');
@@ -157,6 +159,14 @@ const s2 = await st(); log('run 2 ended by', s2.end, '· curious approaches', s2
 check(s2.curious > 0, 'undisturbed rockfish come in for a curious look');
 check(await until('TT.arc.state().phase === "tally"', 20000), 'second tally');
 check(await until('TT.arc.state().board', 15000), 'leaderboard after a scoreless round');
+
+// ---- a later qualifying score goes straight to the board under the remembered name (no entry screen)
+await c.ev('localStorage.setItem("spearo.name", "AUTO"); localStorage.removeItem("spearo.scores.tofino"); TT.arc.fakeTally(3)');
+check(await until('TT.arc.state().board', 15000), 'board shown without asking');
+check(!(await st()).ini, 'no name entry');
+check((await c.ev('JSON.parse(localStorage.getItem("spearo.scores.tofino"))'))?.[0]?.i === 'AUTO', 'score saved under the remembered name');
+await c.ev('document.getElementById("chg").click()');
+check(await c.ev('localStorage.getItem("spearo.name")') === null, '"Not AUTO?" forgets the name');
 
 const errs = c.logs.filter((l) => /^(error|EXC)/.test(l));
 check(errs.length === 0, 'no page errors' + (errs.length ? ':\n' + errs.join('\n') : ''));
