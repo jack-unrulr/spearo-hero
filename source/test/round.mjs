@@ -135,20 +135,16 @@ check(await until(`TT.arc.state().tallyRows === ${s1.rows.length}`, 8000), 'one 
 check(await until('document.querySelectorAll("#stats p").length === 8 && document.getElementById("verdict").textContent.length > 0', 8000), 'end stats and verdict shown');
 const acc = await c.ev('document.querySelector("#stats p:nth-child(2) b").textContent'); log('accuracy', acc, '·', await c.ev('document.getElementById("verdict").textContent'));
 log('score', s1.score, s1.rows.map((r) => `${r.n} ${r.inch}in ${r.outcome} ${r.zone}@${r.frac.toFixed(2)} ${r.pts}`).join(' | '));
+check(await until('TT.arc.state().board', 15000), 'leaderboard shown');
 if (s1.score > 0) {
-  check(await until('TT.arc.state().ini', 15000), 'asks for initials');
-  for (const k of ['KeyT', 'KeyS', 'KeyT', 'Enter']) { await c.tap(k); await c.sleep(80); }
-  check(await until('TT.arc.state().board', 3000), 'leaderboard shown');
   const lb = await c.ev('JSON.parse(localStorage.getItem("spearo.scores.tofino"))');
-  check(lb && lb[0].i === 'TST' && lb[0].s === s1.score && lb[0].r === seed, 'score saved under TST with the round seed');
-  check(await c.ev('localStorage.getItem("spearo.name")') === 'TST', 'name remembered on this device');
-  check(await c.ev('document.getElementById("chg").textContent') === 'Not TST?', '"Not TST?" link under the board');
+  check(lb && lb.some((e) => e.i === 'TST' && e.s === s1.score && e.r === seed), 'score posted automatically under TST with the round seed');
   if (LB) {
     const w = await (await fetch(LB + '/scores?loc=tofino')).json();
     check(w.top.some((e) => e.name === 'TST' && e.score === s1.score && e.seed === seed), 'score is on the world board (server)');
     check(/World top 10/.test(await c.ev('document.getElementById("lbt").textContent')), 'tally shows the world board');
   }
-} else check(await until('TT.arc.state().board', 15000), 'leaderboard shown (score not high enough)');
+}
 await snap('6-tally');
 
 // ---- run 2: no shots, air runs out
@@ -160,13 +156,17 @@ check(s2.curious > 0, 'undisturbed rockfish come in for a curious look');
 check(await until('TT.arc.state().phase === "tally"', 20000), 'second tally');
 check(await until('TT.arc.state().board', 15000), 'leaderboard after a scoreless round');
 
-// ---- a later qualifying score goes straight to the board under the remembered name (no entry screen)
-await c.ev('localStorage.setItem("spearo.name", "AUTO"); localStorage.removeItem("spearo.scores.tofino"); TT.arc.fakeTally(3)');
-check(await until('TT.arc.state().board', 15000), 'board shown without asking');
-check(!(await st()).ini, 'no name entry');
-check((await c.ev('JSON.parse(localStorage.getItem("spearo.scores.tofino"))'))?.[0]?.i === 'AUTO', 'score saved under the remembered name');
-await c.ev('document.getElementById("chg").click()');
-check(await c.ev('localStorage.getItem("spearo.name")') === null, '"Not AUTO?" forgets the name');
+// ---- Dive again: Player 1's name screen, filled with the last name; a new name is kept and the dive starts
+await c.ev('localStorage.setItem("spearo.name", "TST"); document.getElementById("again").click()');
+check(await until('TT.arc.state().ini', 3000), 'Dive again asks for the player\'s name');
+check(await c.ev('document.getElementById("nm").value') === 'TST', 'the last name is filled in');
+await c.sleep(200); await c.ev('document.getElementById("nm").value = ""');
+for (const k of ['KeyZ', 'KeyE', 'KeyD', 'KeyH']) { await c.tap(k); await c.sleep(60); }
+check(await c.ev('document.getElementById("nm").value') === 'ZEDH', 'typing fills the name box (H does not toggle the stats)');
+await snap('7-player');
+await c.tap('Enter');
+check(await until('TT.arc.state().phase === "descent"', 3000), 'Enter starts the dive');
+check(await c.ev('localStorage.getItem("spearo.name")') === 'ZEDH', 'the new name is kept');
 
 const errs = c.logs.filter((l) => /^(error|EXC)/.test(l));
 check(errs.length === 0, 'no page errors' + (errs.length ? ':\n' + errs.join('\n') : ''));

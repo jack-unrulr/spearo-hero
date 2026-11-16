@@ -11,7 +11,7 @@
   TT.arc = {
     state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, spFish2, doubles: RD.st.doubles, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden }),
     fish: () => FI.map((f) => ({ i: f.i, s: f.s, st: STN[f.st], x: f.x, d: f.d, h: f.h, wound: f.wound, spooks: f.spooks, vis: FST[f.i] === 0 && !!onScreen(f.i) })),
-    go: (seed) => { ui(false); startRound(seed); return RD.seed; },
+    go: (seed, name = 'TST') => { ui(false); PLAYER = name; startRound(seed); return RD.seed; },
     speed: (k) => { RD.speed = k; },
     rig: (r) => { RD.rig = r; },
     hold: (v) => { hold = !!v; RD.still = hold ? 1 : 0; },
@@ -21,7 +21,7 @@
     fakeTally: (n) => {
       RD.rows = [];
       for (let k = 0; k < n; k++) { const s = k === 3 ? 1 : k === 5 ? 2 : 0, o = k === 5 ? 'WRONG FISH' : k === 4 ? 'GOT AWAY' : ['STONED', 'BODY SHOT', 'TAIL SHOT'][k % 3]; RD.rows.push({ s, n: SPEC[s].n, inch: s === 1 ? 38 : 16 + k, zone: ['head', 'body', 'tail'][k % 3], frac: [0.3, 0, -0.3][k % 3], outcome: o, pts: k === 5 ? -500 : k === 4 ? 110 : s === 1 ? 1500 : 600 }); }
-      RD.score = 2800; Object.assign(RD.st, { shots: 9, hits: 7, stoned: 3, landed: 5, biggest: 38, best: 3, bonus: 450, threads: 1, trophy: 1 });
+      RD.score = 2800; Object.assign(RD.st, { shots: 9, hits: 7, hitShots: 7, stoned: 3, landed: 5, biggest: 38, best: 3, bonus: 450, threads: 1, trophy: 1 });
       RD.end = 'air'; RD.phase = 'tally'; RD.endT2 = ASCENT; showTally();
     }, // dev: the round does not end when the scene empties
     // put the crosshair on fish i, at `frac` of its length from the middle (+ toward the nose); returns the first

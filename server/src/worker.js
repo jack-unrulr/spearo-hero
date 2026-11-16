@@ -36,8 +36,9 @@ export default {
       if (!LOC.test(b.loc || '') || !NAME.test(name)) return json({ error: 'bad location or name' }, 400);
       if (!int(b.score, 1, 100000) || !int(b.seed, 0, 1e9)) return json({ error: 'bad score' }, 400);
       for (const k of ['shots', 'hits', 'stoned', 'landed']) if (!int(s[k], 0, 200)) return json({ error: 'bad stats' }, 400);
-      // sanity: hits within shots, landed fish within hits, and a ceiling of about 5000 points per fish landed
-      if (s.hits > s.shots || s.landed > s.hits || s.stoned > s.landed || b.score > 5000 * Math.max(1, s.landed) + 1000) return json({ error: 'implausible score' }, 400);
+      // sanity: hits (shots that hit) within shots, at most two fish landed per hit (a double), and a ceiling of about
+      // 5000 points per fish landed
+      if (s.hits > s.shots || s.landed > 2 * s.hits || s.stoned > s.landed || b.score > 5000 * Math.max(1, s.landed) + 1000) return json({ error: 'implausible score' }, 400);
       const ip = await ipHash(req, env), now = Date.now();
       const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM scores WHERE ip = ? AND at > ?').bind(ip, now - 60000).first();
       if (recent.n >= 5) return json({ error: 'slow down' }, 429);

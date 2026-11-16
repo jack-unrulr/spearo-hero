@@ -255,7 +255,7 @@ function arcStop() {
   startleAlong(G[gOX], G[gOY], G[gOZ], G[gSPX], G[gSPY], G[gSPZ], 0, spFish >= 0 ? FI[spFish] : null);
 }
 function arcHit(i, frac, second) { // second: the far fish of a double
-  const f = FI[i], o = i * FN, zone = ZONE(frac); f.st = SPEARED; f.hit = { zone, frac }; FS[o + fTX] = frac; RD.st.hits++;
+  const f = FI[i], o = i * FN, zone = ZONE(frac); f.st = SPEARED; f.hit = { zone, frac }; FS[o + fTX] = frac; RD.st.hits++; if (!second) RD.st.hitShots++; // hits counts fish; hitShots counts shots that hit (a double is one)
   blood(G[gPX], G[gPY], G[gPZ], 0.09);
   // the thrashing fish scares the ones around it
   startleAlong(FS[o], FS[o + 1], FS[o + 2], FS[o], FS[o + 1], FS[o + 2], 0.6, f);
@@ -319,8 +319,9 @@ function tearOne(f, dt) {
 document.body.insertAdjacentHTML('beforeend', `<canvas id=fx></canvas>
 <div id=hud><p id=sc0>1UP <b id=sc>0</b></p><div id=air><i></i><span>AIR</span></div></div>
 <div id=card></div>
+<form id=who hidden><h2>Player 1</h2><p>Enter your name</p><input id=nm maxlength=7 autocomplete=off autocapitalize=characters spellcheck=false enterkeyhint=go aria-label="Player 1 name"><p class=k>Up to 7 letters or numbers · your trip score goes on the board under it</p><button id=dv>Dive</button></form>
 <p id=big></p>
-<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><div id=ini hidden><p>High score! Enter your name</p><p id=lt><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b></p><p class=k>Up to 7 letters or numbers · Enter</p></div><p id=lbt class=k></p><ol id=lb></ol><button id=chg class=k hidden></button><button id=again>Dive again</button></div></div>`);
+<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><p id=lbt class=k></p><ol id=lb></ol><button id=again>Dive again</button></div></div>`);
 // the fx canvas has to come after the scene canvas but under the HUD: move it next to the canvas
 canvas.after($('fx'));
 const HUD = { sc: $('sc'), air: $('air'), fill: $('air').firstChild, card: $('card'), big: $('big'), tally: $('tally') };
@@ -409,7 +410,7 @@ function buildPicker() {
 }
 function newRound(seed) {
   RD.seed = seed; RD.script = makeScript(seed); RD.next = 0; RD.t = 0; RD.air = AIR; RD.score = 0; RD.rows = []; RD.alarm = 0; RD.end = ''; RD.endT = 0; RD.slow = 0; RD.shots = 0; RD.stamp = ''; RD.curious = 0; RD.back = [0, 0, 0]; RD.lowAir = 0; RD.beat = 0;
-  RD.st = { shots: 0, hits: 0, stoned: 0, landed: 0, lost: 0, doubles: 0, biggest: 0, streak: 0, best: 0, bonus: 0, threads: 0, trophy: 0 };
+  RD.st = { shots: 0, hits: 0, hitShots: 0, stoned: 0, landed: 0, lost: 0, doubles: 0, biggest: 0, streak: 0, best: 0, bonus: 0, threads: 0, trophy: 0 };
   rng = mulberry(seed * 31337 + 7);
   for (const f of FI) { f.st = OFF; FST[f.i] = 4; fishInst(f.i, 0); }
   bubbles.length = clouds.length = calls.length = sparks.length = 0;
@@ -422,16 +423,33 @@ function newRound(seed) {
 }
 function startRound(seed) {
   $('ps').hidden = true;
-  iniOn = false; $('ini').hidden = true; for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
+  iniOn = false; $('who').hidden = true; for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
   newRound(seed); RD.phase = 'descent'; HUD.card.className = 'on'; }
 function endRound(why) {
   if (RD.end) return; MUSIC = 0; MUSICT = 1; RD.end = why; RD.endT = why === 'protected' ? 2.2 : why === 'air' ? 1.2 : 1;
   if (why === 'air') stamp('SURFACE!', 'warn'); else if (why === 'clear') stamp('ALL CLEAR', '', 1.4);
 }
-function arcGo() { // the menu's Dive button: a new round from the start screen or after a tally, else resume
-  if (RD.phase === 'idle' || RD.phase === 'tally') startRound(seedFromUrl ?? (Math.random() * 99999 | 0) + 1);
+function arcGo() { // the menu's Dive button: a new trip from the start screen or after a tally, else resume
+  if (RD.phase === 'idle' || RD.phase === 'tally') askName(seedFromUrl ?? (Math.random() * 99999 | 0) + 1);
   seedFromUrl = null;
 }
+// ---------------------------------------------------------------- players
+// Each trip starts with its player entering a name (one player for now: Player 1). The last name used on this device is
+// filled in, so Enter is enough. The trip's score goes on the board under it at the end, whatever it is.
+let PLAYER = '', whoSeed = 0, iniOn = false;
+const myName = () => { try { const v = localStorage.getItem('spearo.name'); return /^[A-Z0-9]{1,7}$/.test(v || '') ? v : ''; } catch { return ''; } };
+const cleanName = (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, NAMEN);
+function askName(seed) {
+  whoSeed = seed; iniOn = true; newRound(seed); RD.phase = 'idle'; camera(0);
+  const w = $('who'), n = $('nm'); n.value = myName(); w.hidden = false; setTimeout(() => { n.focus(); n.select(); }, 60);
+}
+$('nm').oninput = (e) => { const n = e.target, v = cleanName(n.value); if (v !== n.value) n.value = v; };
+$('who').onsubmit = (e) => {
+  e.preventDefault(); const v = cleanName($('nm').value); if (!v || !iniOn) { $('nm').focus(); return; }
+  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} iniOn = false; $('who').hidden = true; $('nm').blur(); sound(); startRound(whoSeed);
+};
+// typing in the name box doesn't reach the game's keys (H, M, fire…); Esc closes it and the menu opens as usual
+addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { iniOn = false; $('who').hidden = true; } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
 let seedFromUrl = (() => { const v = new URLSearchParams(location.search).get('seed'); return v ? +v | 0 : null; })();
 
 // ---------------------------------------------------------------- the camera and the crosshair
@@ -542,7 +560,7 @@ async function lbFetch() {
 }
 async function lbPost(name) {
   if (!LBU) return null;
-  const S = RD.st, body = { loc: LOC.id, name, score: RD.score, seed: RD.seed, stats: { shots: S.shots, hits: S.hits, stoned: S.stoned, landed: S.landed } };
+  const S = RD.st, body = { loc: LOC.id, name, score: RD.score, seed: RD.seed, stats: { shots: S.shots, hits: S.hitShots, stoned: S.stoned, landed: S.landed } };
   try {
     const r = await fetch(`${LBU}/scores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
     if (!r.ok) throw r.status; const v = await r.json(); world = v.top; showHi(); return v;
@@ -643,14 +661,14 @@ function silhouette(s, frac, cross) { // the tally's fish, with a dot where the 
   }
   return c;
 }
-let iniOn = false, ini = '', tallyTimers = [];
+let tallyTimers = [];
 function showTally() {
   RD.lbP = lbFetch();
   HUD.card.className = '';
   $('d').textContent = 'Start'; $('ps').hidden = false;
   body.classList.add('tal'); HUD.tally.className = 'on';
   $('why').textContent = RD.end === 'protected' ? 'Speared a surfperch' : RD.end === 'air' ? 'Out of air' : 'Nothing left to hunt';
-  const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; statsShown = 0; $('ini').hidden = true; $('again').hidden = true; $('chg').hidden = true;
+  const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; statsShown = 0; $('again').hidden = true;
   for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
   const list = RD.rows.length ? RD.rows : [{ none: 1 }];
   list.forEach((r, k) => tallyTimers.push(setTimeout(() => {
@@ -680,7 +698,7 @@ function verdict() {
 }
 function showStats() {
   if (statsShown) return; statsShown = 1;
-  const S = RD.st, acc = S.shots ? round(S.hits / S.shots * 100) : 0;
+  const S = RD.st, acc = S.shots ? round(S.hitShots / S.shots * 100) : 0;
   const cells = [['Shots', S.shots], ['Accuracy', S.shots ? acc + '%' : '—'], ['Stoned', S.stoned], ['Landed', S.landed], ['Biggest', S.biggest ? S.biggest + ' in' : '—'], ['Best streak', S.best], ['Got away', S.lost], ['Bonus', S.bonus ? '+' + S.bonus : 0]];
   $('stats').innerHTML = cells.map(([k, v]) => `<p><b>${v}</b><span>${k}</span></p>`).join('');
   $('verdict').textContent = verdict();
@@ -693,27 +711,20 @@ function showStats() {
 function afterCount() {
   if (RD.phase !== 'tally') return;
   showStats();
-  if (!$('again').hidden || iniOn) return;
+  if (!$('again').hidden) return;
   afterBoard();
 }
-// a name is asked for when the score makes the top 10 of the board being shown (the world's when it can be reached)
+// the score goes on the board under the player's name (asked at the start of the trip); a zero score just shows the board
 async function afterBoard() {
-  const seed = RD.seed; await RD.lbP; if (RD.phase !== 'tally' || RD.seed !== seed || iniOn || !$('again').hidden) return;
-  const b = world || localBoard(), qual = RD.score > 0 && (b.length < 10 || RD.score > b[b.length - 1].score);
-  if (!qual) showBoard(b, -1);
-  else if (myName()) submitIni(myName()); // asked once per device, then every qualifying score is sent under it
-  else { iniOn = true; ini = ''; $('ini').hidden = false; showIni(); }
+  const seed = RD.seed; await RD.lbP; if (RD.phase !== 'tally' || RD.seed !== seed || !$('again').hidden) return;
+  if (RD.score > 0 && PLAYER) submitScore(PLAYER); else showBoard(world || localBoard(), -1);
 }
-// the name a player entered once, kept on this device; 'Not NAME?' under the board forgets it so the next score asks
-const myName = () => { try { const v = localStorage.getItem('spearo.name'); return /^[A-Z0-9]{1,7}$/.test(v || '') ? v : ''; } catch { return ''; } };
-function showIni() { const b = $('lt').children; for (let k = 0; k < NAMEN; k++) b[k].textContent = ini[k] || '_'; }
-async function submitIni(name) {
-  iniOn = false; $('ini').hidden = true; try { localStorage.setItem('spearo.name', name); } catch {}
+async function submitScore(name) {
   const lb = lbLoad(), e = { i: name, s: RD.score, r: RD.seed, d: Date.now() };
   lb.push(e); lb.sort((a, b) => b.s - a.s || a.d - b.d); lb.length = min(lb.length, 10); lbSave(lb); showHi();
   $('lbt').textContent = LBU ? 'Sending…' : ''; $('again').hidden = true;
   const v = await lbPost(name);
-  if (v) showBoard(v.top, v.rank <= 10 ? v.rank - 1 : -1, v.rank > 10 ? v.rank : 0);
+  if (v) showBoard(v.top, v.rank <= 10 ? v.rank - 1 : -1, v.rank);
   else showBoard(localBoard(), lb.indexOf(e));
 }
 function showBoard(b, me, rank) {
@@ -721,17 +732,8 @@ function showBoard(b, me, rank) {
   $('lbt').textContent = (b === world || rank ? 'World top 10' : 'Top 10 on this device') + ' · ' + LOC.name + (rank ? ` · you are #${rank}` : '') + (LBU && !world ? ' · world board offline' : '');
   b.forEach((e, k) => { const li = document.createElement('li'); if (k === me) li.className = 'me'; li.innerHTML = `<b></b><span>${e.score}</span>`; li.firstChild.textContent = e.name; ol.append(li); });
   if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
-  const nm = myName(), ch = $('chg'); ch.hidden = !nm; ch.disabled = false; ch.textContent = `Not ${nm}?`;
   $('again').hidden = false; setTimeout(() => $('again').focus(), 50);
 }
-addEventListener('keydown', (e) => {
-  if (!iniOn || menu || e.code === 'Escape') return;
-  e.stopImmediatePropagation(); e.preventDefault();
-  if (/^(Key[A-Z]|Digit[0-9])$/.test(e.code) && ini.length < NAMEN) ini += e.code[e.code.length - 1];
-  else if (e.code === 'Backspace') ini = ini.slice(0, -1);
-  else if (e.code === 'Enter' && ini.length) { submitIni(ini); return; }
-  showIni(); if (SFX) SFX(3);
-}, true);
 // the leaderboard popup on the start screen: the current location's board, fetched fresh
 function fillBoard(b, note) {
   const ol = $('popl'); ol.innerHTML = '';
@@ -751,8 +753,7 @@ const closeBoard = () => { if ($('pop').hidden) return false; $('pop').hidden = 
 $('popx').onclick = closeBoard;
 $('pop').onclick = (e) => { if (e.target === $('pop')) closeBoard(); };
 addEventListener('keydown', (e) => { if (e.code === 'Escape' && closeBoard()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
-$('chg').onclick = () => { try { localStorage.removeItem('spearo.name'); } catch {} const ch = $('chg'); ch.textContent = 'Your next high score will ask for a name'; ch.disabled = true; };
-$('again').onclick = () => { if (RD.phase === 'tally') { sound(); startRound((Math.random() * 99999 | 0) + 1); } };
+$('again').onclick = () => { if (RD.phase === 'tally') { sound(); askName((Math.random() * 99999 | 0) + 1); } };
 
 // ---------------------------------------------------------------- start: the spot behind the menu, a few garibaldi
 // the menu's hi-score line, from the board
