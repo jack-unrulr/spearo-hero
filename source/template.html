@@ -77,7 +77,12 @@ body:not(.g) :is(#c, #fx) { filter: blur(1vmax) brightness(.5); transform: scale
 .tslot.got b::before { content: '\1F3C6\00a0'; font-style: normal; }
 .tslot.miss b { color: #ff7a6a; } .tslot.miss span { color: #ff7a6a; }
 /* the options button (top right of the start page) and its popup: detail level and the controls */
-#ob { position: absolute; top: .6em; right: .6em; padding: .3em .6em; background: #03222dd9; box-shadow: inset 0 0 0 2px #7ff3ff, 0 .3em 1em #0009; font-size: 1.3em; color: #e8fbff; opacity: .8; }
+/* the menu button: same look in the menus (#ob) and in the scene (#o) */
+#ob, #o {
+  position: absolute; top: .6em; right: .6em; width: 2.6em; height: 2.6em; padding: 0;
+  background: #03222dd9; box-shadow: inset 0 0 0 2px #7ff3ff, 0 .3em 1em #0009; color: #e8fbff; opacity: .8;
+}
+#ob svg, #o svg { width: 1.2em; height: 1.2em; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 .l #ob { display: none; }
 #opt { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: #020a10cc; }
 #opt[hidden] { display: none; }
@@ -278,10 +283,7 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 }
 
 /* in the scene: a small menu button (hidden while the mouse is captured, Esc does the same) and the stats line */
-#o {
-  position: absolute; top: .6em; right: .6em; display: none; padding: .3em .6em; background: #03222dd9;
-  box-shadow: inset 0 0 0 2px #7ff3ff, 0 .3em 1em #0009; font-size: 1.3em; color: #e8fbff; opacity: .8;
-}
+#o { display: none; }
 .g #o { display: flex; }
 .p #o { display: none; }
 #i {
@@ -428,7 +430,7 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 <canvas id=c></canvas>
 <div id=m data-s=home>
   <p id=hi>HI-SCORE <b>— — —</b></p>
-  <button id=ob aria-label=Options title=Options>≡</button>
+  <button id=ob aria-label=Options title=Options><svg viewBox="0 0 20 20" aria-hidden=true><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
   <div id=logo><span class=l1>Spearo</span><span class=l2>Hero</span><i class=spear></i><i class=burst>Tofino<br>BC</i></div>
   <p id=sub>Breath-hold spearfishing action!</p>
   <div id=a>
@@ -465,7 +467,7 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
   </div>
   <button id=optx>Close</button></div></div>
 <div id=pop hidden role=dialog aria-label="Leaderboard"><div><h2>Top 10</h2><p class=k id=popt></p><ol class=lb id=popl></ol><button id=popx>Close</button></div></div>
-<button id=o aria-label=Menu>≡</button>
+<button id=o aria-label=Menu><svg viewBox="0 0 20 20" aria-hidden=true><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
 <pre id=i></pre>
 <i id=x></i>
 <script>
