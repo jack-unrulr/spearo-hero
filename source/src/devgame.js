@@ -9,9 +9,14 @@
   stepFish = (f, dt) => step0(f, hold ? 0 : dt);
   const onScreen = (i) => { const o = i * FN; return project(FS[o], FS[o + 1], FS[o + 2]) && PJ[0] > 0 && PJ[1] > 0 && PJ[0] < fx.clientWidth && PJ[1] < fx.clientHeight; };
   TT.arc = {
-    state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, spFish2, doubles: RD.st.doubles, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden }),
+    state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, spFish2, doubles: RD.st.doubles, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden, scr: $('m').dataset.s, trophyIn: RD.script.some((e) => isT(e.s)), mode: tallyMode, again: $('again').textContent }),
     fish: () => FI.map((f) => ({ i: f.i, s: f.s, st: STN[f.st], x: f.x, d: f.d, h: f.h, wound: f.wound, spooks: f.spooks, vis: FST[f.i] === 0 && !!onScreen(f.i) })),
-    go: (seed, name = 'TST') => { if (iniOn) closeName(); ui(false); PLAYER = name; startRound(seed); return RD.seed; },
+    // a trip under `name` with the trophy on its first site, and that site's dive started with exactly `seed`
+    go: (seed, name = 'TST') => { if (iniOn) closeName(); if (TRIP.on) endTrip(); PLAYER = name; newTrip(seed); TRIP.trophy = 0; startDive(0, seed); return RD.seed; },
+    dive: (k, seed) => { if (RD.phase === 'tally') leaveTally(); startDive(k, seed); return RD.seed; }, // the trip's dive at site k
+    trip: () => ({ on: TRIP.on, trophy: TRIP.trophy, cur: TRIP.cur, order: TRIP.order, scores: TRIP.dives.map((d) => d ? d.score : null), total: tripScore(), left: TRIP.on ? tripLeft() : 0 }),
+    // try a dive site: the view from x, z facing yaw (for choosing sites)
+    site: (x, z, yaw, eye = 0.9) => { LOC.sites[0].spot = { x, z, yaw, eye }; useSite(0); newRound(1); RD.phase = 'idle'; camera(0); return SPOT_Y; },
     speed: (k) => { RD.speed = k; },
     rig: (r) => { RD.rig = r; },
     hold: (v) => { hold = !!v; RD.still = hold ? 1 : 0; },
@@ -22,7 +27,7 @@
       RD.rows = [];
       for (let k = 0; k < n; k++) { const s = k === 3 ? 1 : k === 5 ? 2 : 0, o = k === 5 ? 'WRONG FISH' : k === 4 ? 'GOT AWAY' : ['STONED', 'BODY SHOT', 'TAIL SHOT'][k % 3]; RD.rows.push({ s, n: SPEC[s].n, inch: s === 1 ? 38 : 16 + k, zone: ['head', 'body', 'tail'][k % 3], frac: [0.3, 0, -0.3][k % 3], outcome: o, pts: k === 5 ? -500 : k === 4 ? 110 : s === 1 ? 1500 : 600 }); }
       RD.score = 2800; Object.assign(RD.st, { shots: 9, hits: 7, hitShots: 7, stoned: 3, landed: 5, biggest: 38, best: 3, bonus: 450, threads: 1, trophy: 1 });
-      RD.end = 'air'; RD.phase = 'tally'; RD.endT2 = ASCENT; showTally();
+      RD.end = 'air'; RD.phase = 'tally'; RD.endT2 = ASCENT; if (!TRIP.on) { newTrip(1); TRIP.cur = 0; } showTally();
     }, // dev: the round does not end when the scene empties
     // put the crosshair on fish i, at `frac` of its length from the middle (+ toward the nose); returns the first
     // fish the spear would meet on that ray (-1: none within the line's length)

@@ -552,15 +552,16 @@ const ui = (m) => {
   if (dead) return;
   menu = m; body.className = m ? 'm' : 'g';
   // focus the dive button so Enter works (delayed: it can't take focus while still hidden)
-  if (m) { fitMenu(); setTimeout(() => menu && bDive.focus(), 100); } else document.activeElement.blur();
+  if (m) { fitMenu(); if ($('m').dataset.s === 'home') setTimeout(() => menu && $('m').dataset.s === 'home' && bDive.focus(), 100); } else document.activeElement.blur();
 };
-// the start screen shrinks to fit short windows: everything in it is sized in em, so scale its font until the logo's
-// starburst clears the hi-score line and the last row clears the bottom (a few passes: the logo also follows vh)
+// the start page shrinks to fit short windows: everything in it is sized in em, so scale its font until the screen that
+// is up (home: from the logo's starburst to the buttons) clears the hi-score line and the bottom (a few passes: the logo
+// also follows vh)
 function fitMenu() {
-  const m = $('m'); m.style.fontSize = '';
+  const m = $('m'), sc = { trips: 'trips', name: 'who', dives: 'dives' }[m.dataset.s]; m.style.fontSize = '';
   for (let k = 0; k < 3; k++) {
     // it's centred, so distances from the middle scale with the font: shrink until both ends fit
-    const c = m.clientHeight / 2, top = $('logo').querySelector('.burst').getBoundingClientRect().top, bot = $('a').getBoundingClientRect().bottom;
+    const c = m.clientHeight / 2, top = (sc ? $(sc) : $('logo').querySelector('.burst')).getBoundingClientRect().top, bot = $(sc || 'a').getBoundingClientRect().bottom;
     const k2 = Math.min((c - $('hi').getBoundingClientRect().bottom - 8) / (c - top), (c - 8) / (bot - c));
     if (k2 >= 1) break;
     m.style.fontSize = parseFloat(getComputedStyle(m).fontSize) * Math.max(0.6, k2 * 0.98) + 'px';
@@ -571,6 +572,11 @@ const go = () => {
   sound(); if (arcGo()) { ui(false); bDive.textContent = 'Resume'; } // a new trip asks for the name first (arcade.js)
 };
 bDive.onclick = go; $('o').onclick = () => ui(true);
+// options (top right of the start page): detail level and the controls
+$('ob').onclick = () => { $('opt').hidden = false; setTimeout(() => $('optx').focus(), 50); };
+$('optx').onclick = () => { $('opt').hidden = true; $('ob').focus(); };
+$('opt').onclick = (e) => { if (e.target === $('opt')) $('opt').hidden = true; };
+addEventListener('keydown', (e) => { if (e.code === 'Escape' && !$('opt').hidden) { $('opt').hidden = true; e.stopImmediatePropagation(); } }, true);
 // detail buttons: the current level is lit, the others reload the page with theirs
 $('q').querySelectorAll('button').forEach((b, i) => { if (i === 2 - LV) b.className = 'on'; else b.onclick = () => { keep('abyssal', 2 - i); location.reload(); }; });
 

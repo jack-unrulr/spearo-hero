@@ -7,22 +7,29 @@
 // Everything is in a local frame of the spot: x to the right, d away from the diver, h up from the eye.
 
 // ---------------------------------------------------------------- locations
-// A location is a spot in the shared world where the diver lies, the words on its cards, and which species (indices
-// into SPEC, fish.js) play which part: `hunt` the target, `trophy` the rare prize worth double, `avoid` the fish not to
-// spear. Spot: x, z on the map, yaw the diver faces (radians, 0 = -z), eye height above the bottom. To add one: an
-// entry here (and its species in SPEC if they are new).
+// A location is a trip: a few dive sites in the shared world, the words on its cards, and which species (indices into
+// SPEC, fish.js) play which part: `hunt` the target, `trophy` the rare prize worth double, `avoid` the fish not to
+// spear. A site is where the diver lies: x, z on the map, yaw the diver faces (radians, 0 = -z), eye height above the
+// bottom. `board` names the location's leaderboard (trip totals). To add a location: an entry here (and its species in
+// SPEC if they are new).
 const LOCATIONS = [
-  { id: 'tofino', name: 'Tofino, BC', blurb: 'Kelp forest', spot: { x: 6, z: -66, yaw: 3.1, eye: 0.9 }, air: 30, hunt: 0, trophy: 1, avoid: 2,
-    avoidWhy: 'Spear one and<br>the round is over' },
+  { id: 'tofino', board: 'tofino-trip', name: 'Tofino, BC', blurb: 'Kelp forest', air: 30, hunt: 0, trophy: 1, avoid: 2,
+    avoidWhy: 'Spear one and<br>the dive is over',
+    sites: [
+      { name: 'Kelp Forest', spot: { x: 6, z: -66, yaw: 3.1, eye: 0.9 } },
+      { name: 'Whale Tail', spot: { x: 10, z: 7, yaw: -0.84, eye: 0.9 } },
+      { name: 'Coral Grotto', spot: { x: 4, z: 72, yaw: 3.5, eye: 0.9 } },
+    ] },
 ];
 const DESCENT = 6.5, ASCENT = 2.5, TURN = 0.07; // s, s, rad of camera turn toward the crosshair near the edges
-let LOC, SPOT, AIR, SPOT_Y, sR, sF;
+let LOC, SITE = 0, SPOT, AIR, SPOT_Y, sR, sF;
 const isT = (s) => s === LOC.trophy, isA = (s) => s === LOC.avoid;
 const toW = (x, d) => [SPOT.x + sR[0] * x + sF[0] * d, SPOT.z + sR[1] * x + sF[1] * d];
 // the bottom under the local grid, as height above the eye (m), x -16..16, d 0..14, every 0.5 m
 const FLX = 65, FLD = 29, FLOOR = new Float32Array(FLX * FLD);
-function useLocation(loc) {
-  LOC = loc; SPOT = loc.spot; AIR = loc.air; AVOID = loc.avoid;
+function useLocation(loc) { LOC = loc; AIR = loc.air; AVOID = loc.avoid; useSite(0); }
+function useSite(k) {
+  SITE = k; SPOT = LOC.sites[k].spot;
   SPOT_Y = floorY(SPOT.x, SPOT.z) + SPOT.eye;
   sR = [cos(SPOT.yaw), sin(SPOT.yaw)]; sF = [sin(SPOT.yaw), -cos(SPOT.yaw)]; // right and forward on the map (x, z)
   for (let j = 0; j < FLD; j++) for (let i = 0; i < FLX; i++) { const [wx, wz] = toW(i * 0.5 - 16, j * 0.5); FLOOR[i + FLX * j] = floorY(wx, wz) - SPOT_Y; }
@@ -45,7 +52,8 @@ const mulberry = (a) => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ 
 const R2 = (a, b) => a + (b - a) * rng();
 
 // ---------------------------------------------------------------- the script
-// Every round: surfperch holding territories close in, black rockfish passing farther out, a lingcod mid-round.
+// Every dive: surfperch holding territories close in, black rockfish passing farther out; on one dive of the trip
+// (TRIP.trophy), a lingcod mid-dive with its escorts.
 // (The fish to avoid keep the name 'garibaldi' in the code, from the first version.)
 function makeScript(seed) {
   rng = mulberry(seed * 7919 + 13);
@@ -58,7 +66,7 @@ function makeScript(seed) {
     if (rng() < 0.35) S.push({ t: t + R2(0.6, 1.4), s: H, side: S[S.length - 1].side }); // a pair
   }
   const tt = R2(12, 20), ts = rng() < 0.5 ? -1 : 1;
-  S.push({ t: tt, s: T, side: ts, kelp: 1 }, { t: tt + 0.3, s: A, escort: 1 }, { t: tt + 0.7, s: A, escort: 1 }); // the trophy brings company
+  if (!TRIP.on || TRIP.cur === TRIP.trophy) S.push({ t: tt, s: T, side: ts, kelp: 1 }, { t: tt + 0.3, s: A, escort: 1 }, { t: tt + 0.7, s: A, escort: 1 }); // the trophy brings company
   S.sort((a, b) => a.t - b.t);
   return S;
 }
@@ -221,7 +229,7 @@ function stepFish(f, dt) {
 const ZONE = (frac) => frac > 0.2 ? 'head' : frac < -0.22 ? 'tail' : 'body';
 const basePts = (f) => round(FS[f.i * FN + fLEN] * 1000 / 50) * 50 * (isT(f.s) ? 2 : 1);
 const cm = (f) => round(FS[f.i * FN + fLEN] * 100), inch = (f) => round(FS[f.i * FN + fLEN] * 39.37); // lengths are shown in inches
-function addScore(n) { RD.score = max(0, RD.score + n); HUD.sc.textContent = RD.score; } // never below zero
+function addScore(n) { RD.score = max(0, RD.score + n); HUD.sc.textContent = RD.score; } // a dive never goes below zero; the HUD counts this dive only
 function row(f, outcome, pts) { RD.rows.push({ s: f.s, n: SPEC[f.s].n, inch: inch(f), zone: f.hit ? f.hit.zone : '', frac: f.hit ? f.hit.frac : 0, outcome, pts }); }
 // a wounded fish that leaves the view: the hit still pays, 100 less (never under 50), so a lost fish never costs points
 function lost(f) {
@@ -320,7 +328,7 @@ document.body.insertAdjacentHTML('beforeend', `<canvas id=fx></canvas>
 <div id=hud><p id=sc0>1UP <b id=sc>0</b></p><div id=air><i></i><span>AIR</span></div></div>
 <div id=card></div>
 <p id=big></p>
-<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><p id=lbt class=k></p><ol id=lb></ol><button id=again>Dive again</button></div></div>`);
+<div id=tally><div class=tl><h2 id=th>Dive over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><p id=lbt class=k></p><ol id=lb></ol><button id=again>Next dive</button></div></div>`);
 // the fx canvas has to come after the scene canvas but under the HUD: move it next to the canvas
 canvas.after($('fx'));
 const HUD = { sc: $('sc'), air: $('air'), fill: $('air').firstChild, card: $('card'), big: $('big'), tally: $('tally') };
@@ -387,25 +395,14 @@ function drawFx(dt) {
 }
 
 // ---------------------------------------------------------------- round flow
-// the dive card for the current location: what to hunt (with photos), what to avoid, the tip
+// the dive card for the current site: what to hunt (with photos), what to avoid, the tip
 function buildCard() {
   const fig = (s, extra, cls) => `<figure data-s=${s}${cls ? ' class=' + cls : ''}><figcaption>${SPEC[s].n}${extra || ''}</figcaption></figure>`;
-  HUD.card.innerHTML = `<h2>${LOC.name}</h2><p class=d>${LOC.blurb} · one breath · ${AIR} s on the bottom</p>
+  HUD.card.innerHTML = `<h2>${LOC.sites[SITE].name}</h2><p class=d>${LOC.name} · one breath · ${AIR} s on the bottom</p>
 <div class=cols><div class="cc hunt"><b class=hd>Hunt</b><div class=fs>${fig(LOC.hunt)}${fig(LOC.trophy, ' <em>Trophy ×2</em>')}</div></div>
 <div class="cc avoid"><b class=hd>Avoid</b><div class=fs>${fig(LOC.avoid, '', 'no')}</div><p>${LOC.avoidWhy}</p></div></div>
 <p class=tip><i></i><span><b>Aim for the head!</b> Head shots stone the fish. Body and tail shots can tear free.</span></p>`;
   for (const f of HUD.card.querySelectorAll('figure')) f.prepend(fishCanvas(+f.dataset.s, 156, 65));
-}
-// the location picker on the start screen: one button per location, the current one lit
-function buildPicker() {
-  const el = $('loc'); el.innerHTML = '<span>Location</span>';
-  for (const l of LOCATIONS) {
-    const b = document.createElement('button'); b.textContent = l.name; if (l === LOC) b.className = 'on';
-    b.onclick = () => { if (RD.phase !== 'idle' && RD.phase !== 'tally') return; useLocation(l); try { localStorage.setItem('spearo.loc', l.id); } catch {}
-      buildPicker(); buildCard(); world = null; showHi(); lbFetch(); newRound(1); RD.phase = 'idle'; camera(0); };
-    el.append(b);
-  }
-  const t = document.createElement('button'); t.className = 'top'; t.textContent = 'Top 10'; t.onclick = openBoard; el.append(t);
 }
 function newRound(seed) {
   RD.seed = seed; RD.script = makeScript(seed); RD.next = 0; RD.t = 0; RD.air = AIR; RD.score = 0; RD.rows = []; RD.alarm = 0; RD.end = ''; RD.endT = 0; RD.slow = 0; RD.shots = 0; RD.stamp = ''; RD.curious = 0; RD.back = [0, 0, 0]; RD.lowAir = 0; RD.beat = 0;
@@ -428,28 +425,98 @@ function endRound(why) {
   if (RD.end) return; MUSIC = 0; MUSICT = 1; RD.end = why; RD.endT = why === 'protected' ? 2.2 : why === 'air' ? 1.2 : 1;
   if (why === 'air') stamp('SURFACE!', 'warn'); else if (why === 'clear') stamp('ALL CLEAR', '', 1.4);
 }
-function arcGo() { // the menu's Start button: a new trip asks for the player's name first (false: the menu stays up); else resume
-  if (RD.phase !== 'idle' && RD.phase !== 'tally') return true;
-  askName(seedFromUrl ?? (Math.random() * 99999 | 0) + 1); seedFromUrl = null; return false;
+// ---------------------------------------------------------------- the trip
+// A trip is every dive site of a location, each dived once, in any order. One of them, picked at random, has the trophy.
+// Its score is the sum of its dives; that total is what goes on the board.
+const TRIP = { on: 0, seed: 0, trophy: -1, dives: [], cur: -1, order: [] };
+function newTrip(seed) {
+  const r = mulberry(seed * 9973 + 5);
+  TRIP.on = 1; TRIP.seed = seed; TRIP.trophy = r() * LOC.sites.length | 0; TRIP.dives = LOC.sites.map(() => null); TRIP.cur = -1; TRIP.order = [];
+}
+const tripScore = () => TRIP.dives.reduce((a, d) => a + (d ? d.score : 0), 0);
+const tripLeft = () => TRIP.dives.filter((d) => !d).length;
+function tripStats() { // the dives' stats added up (the biggest fish and best streak: the best of them)
+  const S = { shots: 0, hits: 0, hitShots: 0, stoned: 0, landed: 0, lost: 0, doubles: 0, biggest: 0, best: 0, bonus: 0, threads: 0, trophy: 0, prot: 0 };
+  for (const d of TRIP.dives) if (d) {
+    for (const k of ['shots', 'hits', 'hitShots', 'stoned', 'landed', 'lost', 'doubles', 'bonus', 'threads']) S[k] += d.st[k];
+    S.biggest = max(S.biggest, d.st.biggest); S.best = max(S.best, d.st.best); S.trophy |= d.st.trophy; if (d.end === 'protected') S.prot++;
+  }
+  return S;
+}
+function startDive(k, seed) {
+  if (!TRIP.on || TRIP.dives[k]) return;
+  TRIP.cur = k; useSite(k); buildCard(); $('m').dataset.s = 'home'; $('quit').hidden = false; ui(false); bDive.textContent = 'Resume';
+  startRound(seed ?? TRIP.seed * 7 + k + 1);
+}
+function leaveTally() { for (const t of tallyTimers) clearTimeout(t); tallyTimers = []; newRound(1); RD.phase = 'idle'; camera(0); }
+function endTrip() { TRIP.on = 0; TRIP.cur = -1; TRIP.dives = []; bDive.textContent = 'Start'; $('ps').hidden = false; $('quit').hidden = true; leaveTally(); }
+
+// ---------------------------------------------------------------- screens on the start page
+// Start > trip picker > Player 1's name > dive picker > a dive and its results, back to the picker > trip results.
+// #m[data-s] says which is up: home, trips, name, dives.
+function show(s) { $('m').dataset.s = s; ui(true); }
+function arcGo() { // the home screen's button: resume a paused dive (true), or go and pick a trip (false: the menu stays up)
+  if (TRIP.on && RD.phase !== 'idle') return true;
+  showTrips(); return false;
+}
+// the trip picker: a card per location with a photo of its first site and its top score
+function showTrips() {
+  const el = $('tripc'); el.innerHTML = '';
+  for (const l of LOCATIONS) {
+    const c = document.createElement('div'), b = document.createElement('button'), top = (WORLD[l.board] || localBoard(l))[0];
+    c.className = 'tcard'; b.className = 'go'; b.append(shot(l, 0, 208, 150));
+    b.insertAdjacentHTML('beforeend', `<b>${l.name}</b><span>${l.blurb} · ${l.sites.length} dives</span>`);
+    b.onclick = () => { sound(); useLocation(l); try { localStorage.setItem('spearo.loc', l.id); } catch {} buildCard(); showHi(); askName(); };
+    c.append(b); c.insertAdjacentHTML('beforeend', '<p class=hs>Hi-score <b></b></p><button class=top>Top 10</button>');
+    c.querySelector('.hs b').textContent = top ? `${top.name} ${top.score}` : '— — —';
+    c.querySelector('.top').onclick = () => openBoard(l);
+    el.append(c); lbFetch(l).then((w) => { if (w && w[0] && c.isConnected) c.querySelector('.hs b').textContent = `${w[0].name} ${w[0].score}`; });
+  }
+  el.insertAdjacentHTML('beforeend', '<div class="tcard soon"><i></i><b>More waters</b><span>Coming soon</span></div>');
+  show('trips'); setTimeout(() => el.querySelector('.go').focus(), 100);
 }
 // ---------------------------------------------------------------- players
-// Each trip starts with its player entering a name on the start screen (one player for now: Player 1), in place of the
-// menu's buttons. The last name used on this device is filled in, so Enter is enough. The score goes on the board under it.
-let PLAYER = '', whoSeed = 0, iniOn = false;
+// Each trip starts with its player entering a name (one player for now: Player 1). The last name used on this device is
+// filled in, so Enter is enough. The trip's score goes on the board under it.
+let PLAYER = '', iniOn = false;
 const myName = () => { try { const v = localStorage.getItem('spearo.name'); return /^[A-Z]{1,7}$/.test(v || '') ? v : ''; } catch { return ''; } };
 const cleanName = (v) => v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, NAMEN);
-function askName(seed) {
-  whoSeed = seed; iniOn = true; newRound(seed); RD.phase = 'idle'; camera(0); ui(true);
-  const n = $('nm'); n.value = myName(); $('a').classList.add('who'); setTimeout(() => { n.focus(); n.select(); }, 60);
-}
-function closeName() { iniOn = false; $('a').classList.remove('who'); $('nm').blur(); }
+function askName() { iniOn = true; const n = $('nm'); n.value = myName(); show('name'); setTimeout(() => { n.focus(); n.select(); }, 60); }
+function closeName() { iniOn = false; $('nm').blur(); }
 $('nm').oninput = (e) => { const n = e.target, v = cleanName(n.value); if (v !== n.value) n.value = v; };
 $('who').onsubmit = (e) => {
   e.preventDefault(); const v = cleanName($('nm').value); if (!v || !iniOn) { $('nm').focus(); return; }
-  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} closeName(); sound(); ui(false); bDive.textContent = 'Resume'; startRound(whoSeed);
+  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} closeName(); sound();
+  newTrip(seedFromUrl ?? (Math.random() * 99999 | 0) + 1); seedFromUrl = null; showDives();
 };
-// typing in the name box doesn't reach the game's keys (M, fire…); Esc goes back to the menu's buttons
-addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { closeName(); setTimeout(() => bDive.focus(), 50); } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
+// typing in the name box doesn't reach the game's keys (M, fire…); Esc goes back to the trips
+addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { closeName(); showTrips(); } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
+$('trips').querySelector('.back').onclick = () => { show('home'); };
+$('who').querySelector('.back').onclick = () => { closeName(); showTrips(); };
+// the dive picker: a card per site (done ones show their score), and the trophy's slot: empty until the trophy dive is
+// done, then the fish or 'Missed'
+function showDives() {
+  const el = $('divec'); el.innerHTML = '';
+  LOC.sites.forEach((st, k) => {
+    const d = TRIP.dives[k], b = document.createElement('button'); b.className = 'dcard' + (d ? ' done' : ''); b.disabled = !!d;
+    b.append(shot(LOC, k, 176, 110)); b.insertAdjacentHTML('beforeend', `<b>${st.name}</b><span>${d ? d.score + ' pts' : 'Dive'}</span>`);
+    b.onclick = () => { sound(); startDive(k); };
+    el.append(b);
+  });
+  const T = LOC.trophy, td = TRIP.dives[TRIP.trophy], got = td && td.st.trophy, r = got && td.rows.find((r) => r.s === T && r.outcome !== 'GOT AWAY');
+  const slot = document.createElement('div'); slot.className = 'tslot' + (got ? ' got' : td ? ' miss' : '');
+  slot.append(fishCanvas(T, 156, 65));
+  slot.insertAdjacentHTML('beforeend', `<b>Trophy</b><span>${got ? `${SPEC[T].n}${r ? ' · ' + r.inch + ' in' : ''}` : td ? 'Missed' : `${SPEC[T].n}<br>on one of these dives`}</span>`);
+  el.append(slot);
+  const left = tripLeft(); $('dvh').textContent = LOC.name;
+  $('dvs').textContent = `${PLAYER} · ${tripScore()} pts · ${left === LOC.sites.length ? 'pick a dive, any order' : left + (left === 1 ? ' dive left' : ' dives left')}`;
+  show('dives'); setTimeout(() => { const b = el.querySelector('.dcard:not(.done)'); if (b) b.focus(); }, 100);
+}
+// quitting throws the trip away, so the button asks twice
+for (const b of [$('quit'), $('dvq')]) b.onclick = () => {
+  if (b.dataset.sure) { delete b.dataset.sure; b.textContent = 'Quit trip'; endTrip(); show('home'); return; }
+  b.dataset.sure = 1; b.textContent = 'Lose this trip? Click again'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Quit trip'; }, 3000);
+};
 let seedFromUrl = (() => { const v = new URLSearchParams(location.search).get('seed'); return v ? +v | 0 : null; })();
 
 // ---------------------------------------------------------------- the camera and the crosshair
@@ -513,7 +580,7 @@ function arcStep(dtr) {
       while (RD.next < RD.script.length && RD.script[RD.next].t <= RD.t) {
         const e = RD.script[RD.next];
         if (!isA(e.s) && RD.alarm > 0.6) { e.t += 1; break; }
-        const f = fishOf(e.s); if (f) { spawn(f); if (isA(e.s)) { placeGaribaldi(f, 1); if (e.escort) escort(f); } else enter(f, e.side, e.kelp); }
+        const f = fishOf(e.s); if (f) { spawn(f); if (isA(e.s)) { placeGaribaldi(f, 1); if (e.escort) escort(f); } else { enter(f, e.side, e.kelp); if (isT(e.s)) { stamp('TROPHY FISH!', 'gold', 1.5); if (SFX) SFX(15); } } }
         RD.next++;
       }
       // the scene is empty: nothing left to come and no sheephead around
@@ -544,26 +611,26 @@ function arcStep(dtr) {
 // ---------------------------------------------------------------- leaderboards
 // The world board is a small server (server/ in the repo: a Cloudflare Worker with a D1 database). LB_DEFAULT is where
 // it is deployed; ?lb=<url> overrides it (for testing against a local server) and ?lb=off turns it off (the tests). With no server, or when it can't be
-// reached, the board is this device's own (localStorage). One board per location. Names: 1-7 of A-Z and 0-9.
+// reached, the board is this device's own (localStorage). One board per location, of trip totals. Names: 1-7 letters.
 const LB_DEFAULT = 'https://spearo-hero-scores.spearo-hero-scores.workers.dev'; // the deployed server (server/, `npm run deploy`)
 const LBQ = new URLSearchParams(location.search).get('lb'), LBU = (LBQ === 'off' ? '' : LBQ || LB_DEFAULT).replace(/\/$/, ''), NAMEN = 7;
-const lbKey = () => 'spearo.scores.' + LOC.id;
-const lbLoad = () => { try { const v = JSON.parse(localStorage.getItem(lbKey())); return Array.isArray(v) ? v : []; } catch { return []; } };
+const lbKey = (l = LOC) => 'spearo.scores.' + l.board;
+const lbLoad = (l) => { try { const v = JSON.parse(localStorage.getItem(lbKey(l))); return Array.isArray(v) ? v : []; } catch { return []; } };
 const lbSave = (v) => { try { localStorage.setItem(lbKey(), JSON.stringify(v)); } catch {} };
-const localBoard = () => lbLoad().map((e) => ({ name: e.i, score: e.s }));
-let world = null; // the world top 10 for the current location, as last fetched; null when there is no server or it is down
-async function lbFetch() {
-  if (!LBU) return (world = null);
-  try { const r = await fetch(`${LBU}/scores?loc=${LOC.id}&limit=10`, { signal: AbortSignal.timeout(4000) }); if (!r.ok) throw r.status; world = (await r.json()).top; }
-  catch (e) { world = null; console.warn('leaderboard unreachable', e); }
-  showHi(); return world;
+const localBoard = (l) => lbLoad(l).map((e) => ({ name: e.i, score: e.s }));
+const WORLD = {}; // the world top 10 per board, as last fetched; missing or null when there is no server or it is down
+async function lbFetch(l = LOC) {
+  if (!LBU) return (WORLD[l.board] = null);
+  try { const r = await fetch(`${LBU}/scores?loc=${l.board}&limit=10`, { signal: AbortSignal.timeout(4000) }); if (!r.ok) throw r.status; WORLD[l.board] = (await r.json()).top; }
+  catch (e) { WORLD[l.board] = null; console.warn('leaderboard unreachable', e); }
+  showHi(); return WORLD[l.board];
 }
-async function lbPost(name) {
+async function lbPost(name) { // the trip's total and its stats
   if (!LBU) return null;
-  const S = RD.st, body = { loc: LOC.id, name, score: RD.score, seed: RD.seed, stats: { shots: S.shots, hits: S.hitShots, stoned: S.stoned, landed: S.landed } };
+  const S = tripStats(), body = { loc: LOC.board, name, score: tripScore(), seed: TRIP.seed, stats: { shots: S.shots, hits: S.hitShots, stoned: S.stoned, landed: S.landed } };
   try {
     const r = await fetch(`${LBU}/scores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
-    if (!r.ok) throw r.status; const v = await r.json(); world = v.top; showHi(); return v;
+    if (!r.ok) throw r.status; const v = await r.json(); WORLD[LOC.board] = v.top; showHi(); return v;
   } catch (e) { console.warn('score not sent', e); return null; }
 }
 const COL = ['#59626b', '#8a7746', '#ee8a3c'];
@@ -652,6 +719,31 @@ function fishCanvas(s, w, h) {
   k.translate(w / 2, h / 2); if (!PHOTO[s]) drawFish(k, s, w * 0.9);
   return c;
 }
+// Photos of the dive sites, taken once while the page loads: the diver's view from each spot. shot() gives a thumbnail
+// (CSS size w x h) cropped from one to fill.
+const SHOT = {};
+function siteShoot() {
+  const keep = [F[CX], F[CY], F[CZ], F[YAW], F[PIT]], g0 = GAME, hg = hideGun, l0 = LOC, k0 = SITE;
+  GAME = 1; hideGun = 1;
+  try {
+    for (const l of LOCATIONS) {
+      LOC = l; SHOT[l.id] = l.sites.map((st, k) => {
+        useSite(k); F[CX] = SPOT.x; F[CY] = SPOT_Y; F[CZ] = SPOT.z; F[YAW] = SPOT.yaw; F[PIT] = -0.04; render();
+        const c = document.createElement('canvas'), cx = c.getContext('2d'); c.width = 480; c.height = 300;
+        const w = min(canvas.width, canvas.height * 1.6), h = w / 1.6; cx.filter = 'saturate(1.25) contrast(1.08) brightness(1.15)';
+        cx.drawImage(canvas, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h, 0, 0, c.width, c.height); return c;
+      });
+    }
+  } catch (e) { console.warn('site photos', e); }
+  LOC = l0; useSite(k0); GAME = g0; hideGun = hg; F[CX] = keep[0]; F[CY] = keep[1]; F[CZ] = keep[2]; F[YAW] = keep[3]; F[PIT] = keep[4];
+}
+function shot(l, k, w, h) {
+  const c = document.createElement('canvas'), x = c.getContext('2d'), src = SHOT[l.id] && SHOT[l.id][k];
+  c.width = w * 2; c.height = h * 2; c.style.width = w + 'px'; c.style.height = h + 'px';
+  if (!src) { x.fillStyle = '#0a3a4a'; x.fillRect(0, 0, c.width, c.height); return c; }
+  const a = w / h, sw = min(src.width, src.height * a), sh = sw / a;
+  x.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, c.width, c.height); return c;
+}
 function silhouette(s, frac, cross) { // the tally's fish, with a dot where the spear went in; grey and crossed out if lost / wrong fish
   const w = 96, h = 40, c = fishCanvas(s, w, h), k = c.getContext('2d'), sc = PHOTO[s] ? w / PW : w * 0.9, X = (x) => -x * sc;
   if (cross === 'lost') { k.save(); k.globalCompositeOperation = 'saturation'; k.fillStyle = '#000'; k.fillRect(-w, -h, w * 2, h * 2); k.restore(); k.fillStyle = 'rgba(3,19,28,.35)'; k.fillRect(-w, -h, w * 2, h * 2); }
@@ -661,107 +753,123 @@ function silhouette(s, frac, cross) { // the tally's fish, with a dot where the 
   }
   return c;
 }
-let tallyTimers = [];
-function showTally() {
-  RD.lbP = lbFetch();
-  HUD.card.className = '';
-  $('d').textContent = 'Start'; $('ps').hidden = false;
-  body.classList.add('tal'); HUD.tally.className = 'on';
-  $('why').textContent = RD.end === 'protected' ? 'Speared a surfperch' : RD.end === 'air' ? 'Out of air' : 'Nothing left to hunt';
-  const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; statsShown = 0; $('again').hidden = true;
+let tallyTimers = [], tallyMode = ''; // 'dive': one dive's results; 'trip': the whole trip's, with the board
+const rowEl = (cls, html, pic) => { const el = document.createElement('div'); el.className = 'row ' + cls; if (pic) el.append(pic); el.insertAdjacentHTML('beforeend', html); return el; };
+// the results screen: the rows come in one by one in the middle of the screen and the score counts up; then (class
+// 'cnt' off) they slide left as the other column opens, and `done` fills that with the stats and the button
+function tallyRun(title, why, list, total, done) {
+  HUD.card.className = ''; body.classList.add('tal'); HUD.tally.className = 'on cnt';
+  $('th').textContent = title; $('why').textContent = why;
+  const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('lbt').textContent = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; $('again').hidden = true;
   for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
-  const list = RD.rows.length ? RD.rows : [{ none: 1 }];
-  list.forEach((r, k) => tallyTimers.push(setTimeout(() => {
-    const bad = r.outcome === 'GOT AWAY' ? 'lost' : r.outcome === 'WRONG FISH' ? 'prot' : '';
-    const tro = !bad && !r.none && isT(r.s); // a landed trophy: gold row with a badge
-    const el = document.createElement('div'); el.className = 'row ' + bad + (tro ? ' troph' : '');
-    if (r.none) el.innerHTML = '<span>No fish this round</span>';
-    else { el.append(silhouette(r.s, r.zone ? r.frac : null, bad)); el.insertAdjacentHTML('beforeend', `<span>${r.n} <i>${r.inch} in</i>${tro ? '<em>Trophy</em>' : ''}</span><span class=o>${r.outcome}</span><b class=${r.pts < 0 ? 'neg' : ''}>${r.pts > 0 ? '+' : ''}${r.pts}</b>`); }
-    rows.append(el); if (SFX) SFX(3);
-  }, 400 + k * 380)));
-  const t0 = 400 + list.length * 380, tsc = $('tsc'); tsc.textContent = 0;
-  const t1 = performance.now() + t0;
-  const count = (now) => { const u = clamp((now - t1) / 1200, 0, 1); tsc.textContent = round(RD.score * u); if (u < 1 && RD.phase === 'tally') requestAnimationFrame(count); else afterCount(); };
+  list.forEach((el, k) => tallyTimers.push(setTimeout(() => { rows.append(el); if (SFX) SFX(3); }, 400 + k * 380)));
+  const t0 = 400 + list.length * 380, tsc = $('tsc'), mode = tallyMode, t1 = performance.now() + t0; tsc.textContent = 0;
+  const count = (now) => {
+    if (RD.phase !== 'tally' || tallyMode !== mode) return;
+    const u = clamp((now - t1) / 1200, 0, 1); tsc.textContent = round(total * u); if (u < 1) requestAnimationFrame(count); else tallyTimers.push(setTimeout(() => { if (RD.phase !== 'tally' || tallyMode !== mode) return; HUD.tally.classList.remove('cnt'); done(); }, 450));
+  };
   tallyTimers.push(setTimeout(() => requestAnimationFrame(count), t0));
 }
-// the round in numbers, a verdict on dinner, and a few badges
-let statsShown = 0;
-function verdict() {
-  const S = RD.st, sc = RD.score;
-  if (RD.end === 'protected') return pick(['Wrong fish, chief.', 'That perch had a family.', 'The surfperch union is filing a complaint.']);
+// a dive's results: every fish and what became of it, the dive in numbers, then on to the next dive
+function showTally() {
+  tallyMode = 'dive';
+  if (TRIP.on && TRIP.cur >= 0 && !TRIP.dives[TRIP.cur]) { TRIP.dives[TRIP.cur] = { score: RD.score, st: { ...RD.st }, rows: RD.rows.slice(), end: RD.end, seed: RD.seed }; TRIP.order.push(TRIP.cur); }
+  const list = RD.rows.length ? RD.rows.map((r) => {
+    const bad = r.outcome === 'GOT AWAY' ? 'lost' : r.outcome === 'WRONG FISH' ? 'prot' : '', tro = !bad && isT(r.s); // a landed trophy: gold row with a badge
+    return rowEl(bad + (tro ? ' troph' : ''), `<span>${r.n} <i>${r.inch} in</i>${tro ? '<em>Trophy</em>' : ''}</span><span class=o>${r.outcome}</span><b class=${r.pts < 0 ? 'neg' : ''}>${r.pts > 0 ? '+' : ''}${r.pts}</b>`, silhouette(r.s, r.zone ? r.frac : null, bad));
+  }) : [rowEl('', '<span>No fish this dive</span>')];
+  const why = RD.end === 'protected' ? 'Speared a surfperch' : RD.end === 'air' ? 'Out of air' : 'Nothing left to hunt';
+  tallyRun(TRIP.on ? LOC.sites[TRIP.cur].name : 'Dive over', (TRIP.on ? `Dive ${TRIP.order.length} of ${LOC.sites.length} · ` : '') + why, list, RD.score, () => {
+    showStats(RD.st, RD.score, RD.end, 1);
+    const b = $('again'); b.textContent = !TRIP.on ? 'Play again' : tripLeft() ? 'Next dive' : 'Trip results'; b.hidden = false; setTimeout(() => b.focus(), 50);
+  });
+}
+// the trip's results: a row per dive in the order they were dived, the trophy (landed or missed), the trip in numbers,
+// then the board with the total on it
+function showFinal() {
+  tallyMode = 'trip'; RD.lbP = lbFetch();
+  const S = tripStats(), total = tripScore(), T = LOC.trophy, td = TRIP.dives[TRIP.trophy], tr = td.rows.find((r) => r.s === T && r.outcome !== 'GOT AWAY');
+  const list = TRIP.order.map((k) => { const d = TRIP.dives[k];
+    return rowEl('trip', `<span>${LOC.sites[k].name} <i>${d.st.landed} landed</i></span><span class=o>${d.end === 'protected' ? 'WRONG FISH' : d.end === 'air' ? 'OUT OF AIR' : 'ALL CLEAR'}</span><b>${d.score}</b>`, shot(LOC, k, 96, 40)); });
+  list.push(td.st.trophy ? rowEl('troph', `<span>${SPEC[T].n} <i>${tr ? tr.inch + ' in' : ''}</i><em>Trophy</em></span><span class=o>LANDED</span><b></b>`, silhouette(T, null, ''))
+    : rowEl('lost', `<span>${SPEC[T].n}</span><span class=o>TROPHY MISSED</span><b></b>`, silhouette(T, null, 'lost')));
+  tallyRun('Trip over', `${LOC.name} · ${PLAYER}`, list, total, () => { showStats(S, total, '', LOC.sites.length); afterBoard(); });
+}
+// a dive or a trip (n dives) in numbers, a verdict on dinner, and a few badges
+function verdict(S, sc, end, n) {
+  if (end === 'protected') return pick(['Wrong fish, chief.', 'That perch had a family.', 'The surfperch union is filing a complaint.']);
   if (!S.shots) return 'You forgot to pull the trigger.';
-  if (sc >= 2500) return "You're eating well tonight!";
-  if (sc >= 1500) return 'Fish tacos for the whole boat.';
-  if (sc >= 700) return 'Ceviche for one.';
+  if (sc >= 2500 * n) return "You're eating well tonight!";
+  if (sc >= 1500 * n) return 'Fish tacos for the whole boat.';
+  if (sc >= 700 * n) return 'Ceviche for one.';
   if (sc > 0) return 'Better than an empty cooler.';
   return pick(['Better luck next time.', 'Grocery store it is.', 'The fish send their regards.']);
 }
-function showStats() {
-  if (statsShown) return; statsShown = 1;
-  const S = RD.st, acc = S.shots ? round(S.hitShots / S.shots * 100) : 0;
+function showStats(S, sc, end, n) {
+  const acc = S.shots ? round(S.hitShots / S.shots * 100) : 0;
   const cells = [['Shots', S.shots], ['Accuracy', S.shots ? acc + '%' : '—'], ['Stoned', S.stoned], ['Landed', S.landed], ['Biggest', S.biggest ? S.biggest + ' in' : '—'], ['Best streak', S.best], ['Got away', S.lost], ['Bonus', S.bonus ? '+' + S.bonus : 0]];
   $('stats').innerHTML = cells.map(([k, v]) => `<p><b>${v}</b><span>${k}</span></p>`).join('');
-  $('verdict').textContent = verdict();
+  $('verdict').textContent = verdict(S, sc, end, n);
   const aw = [];
-  if (S.stoned >= 2) aw.push('Headhunter'); if (S.shots >= 3 && acc === 100) aw.push('Dead eye'); if (S.trophy) aw.push('Trophy hunter');
-  if (S.threads) aw.push('Threaded the needle'); if (S.doubles) aw.push('Shish kebab'); if (S.best >= 3) aw.push('On fire'); if (RD.end === 'protected') aw.push('Perch puncher');
+  if (S.stoned >= 2 * n) aw.push('Headhunter'); if (S.shots >= 3 && acc === 100) aw.push('Dead eye'); if (S.trophy) aw.push('Trophy hunter');
+  if (S.threads) aw.push('Threaded the needle'); if (S.doubles) aw.push('Shish kebab'); if (S.best >= 3) aw.push('On fire'); if (end === 'protected' || S.prot) aw.push('Perch puncher');
   $('awards').innerHTML = aw.map((a) => `<b>${a}</b>`).join('');
-  if (SFX) SFX(RD.score > 0 && RD.end !== 'protected' ? 17 : 12);
+  if (SFX) SFX(sc > 0 && end !== 'protected' ? 17 : 12);
 }
-function afterCount() {
-  if (RD.phase !== 'tally') return;
-  showStats();
-  if (!$('again').hidden) return;
-  afterBoard();
-}
-// the score goes on the board under the player's name (asked at the start of the trip); a zero score just shows the board
+// the trip's total goes on the board under the player's name; a zero just shows the board
 async function afterBoard() {
-  const seed = RD.seed; await RD.lbP; if (RD.phase !== 'tally' || RD.seed !== seed || !$('again').hidden) return;
-  if (RD.score > 0 && PLAYER) submitScore(PLAYER); else showBoard(world || localBoard(), -1);
+  const seed = TRIP.seed; await RD.lbP; if (RD.phase !== 'tally' || tallyMode !== 'trip' || TRIP.seed !== seed || !$('again').hidden) return;
+  if (tripScore() > 0 && PLAYER) submitScore(PLAYER); else showBoard(WORLD[LOC.board] || localBoard(), -1);
 }
 async function submitScore(name) {
-  const lb = lbLoad(), e = { i: name, s: RD.score, r: RD.seed, d: Date.now() };
+  const lb = lbLoad(), e = { i: name, s: tripScore(), r: TRIP.seed, d: Date.now() };
   lb.push(e); lb.sort((a, b) => b.s - a.s || a.d - b.d); lb.length = min(lb.length, 10); lbSave(lb); showHi();
-  $('lbt').textContent = LBU ? 'Sending…' : ''; $('again').hidden = true;
-  const v = await lbPost(name);
+  $('lbt').textContent = LBU ? 'Sending…' : '';
+  const v = await lbPost(name); if (RD.phase !== 'tally' || tallyMode !== 'trip') return;
   if (v) showBoard(v.top, v.rank <= 10 ? v.rank - 1 : -1, v.rank);
   else showBoard(localBoard(), lb.indexOf(e));
 }
 function showBoard(b, me, rank) {
-  const ol = $('lb'); ol.innerHTML = '';
-  $('lbt').textContent = (b === world || rank ? 'World top 10' : 'Top 10 on this device') + ' · ' + LOC.name + (rank ? ` · you are #${rank}` : '') + (LBU && !world ? ' · world board offline' : '');
+  const ol = $('lb'), w = WORLD[LOC.board]; ol.innerHTML = '';
+  $('lbt').textContent = (b === w || rank ? 'World top 10' : 'Top 10 on this device') + ' · ' + LOC.name + ' trips' + (rank ? ` · you are #${rank}` : '') + (LBU && !w ? ' · world board offline' : '');
   b.forEach((e, k) => { const li = document.createElement('li'); if (k === me) li.className = 'me'; li.innerHTML = `<b></b><span>${e.score}</span>`; li.firstChild.textContent = e.name; ol.append(li); });
   if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
-  $('again').hidden = false; setTimeout(() => $('again').focus(), 50);
+  const a = $('again'); a.textContent = 'Play again'; a.hidden = false; setTimeout(() => a.focus(), 50);
 }
-// the leaderboard popup on the start screen: the current location's board, fetched fresh
-function fillBoard(b, note) {
+// the leaderboard popup on the trip picker: a location's board, fetched fresh
+let popFrom = null;
+function fillBoard(l, b, note) {
   const ol = $('popl'); ol.innerHTML = '';
-  $('popt').textContent = LOC.name + ' · ' + note;
+  $('popt').textContent = l.name + ' trips · ' + note;
   b.forEach((e) => { const li = document.createElement('li'); li.innerHTML = '<b></b><span></span>'; li.firstChild.textContent = e.name; li.lastChild.textContent = e.score; ol.append(li); });
   if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
 }
-async function openBoard() {
+async function openBoard(l) {
   if (SFX) SFX(3);
-  $('pop').hidden = false; setTimeout(() => $('popx').focus(), 50);
-  fillBoard(world || localBoard(), LBU ? 'Loading…' : 'This device');
+  popFrom = document.activeElement; $('pop').hidden = false; setTimeout(() => $('popx').focus(), 50);
+  fillBoard(l, WORLD[l.board] || localBoard(l), LBU ? 'Loading…' : 'This device');
   if (!LBU) return;
-  const w = await lbFetch(); if ($('pop').hidden) return;
-  fillBoard(w || localBoard(), w ? 'World' : 'This device · world board offline');
+  const w = await lbFetch(l); if ($('pop').hidden) return;
+  fillBoard(l, w || localBoard(l), w ? 'World' : 'This device · world board offline');
 }
-const closeBoard = () => { if ($('pop').hidden) return false; $('pop').hidden = true; $('loc').querySelector('.top').focus(); return true; };
+const closeBoard = () => { if ($('pop').hidden) return false; $('pop').hidden = true; if (popFrom && popFrom.isConnected) popFrom.focus(); return true; };
 $('popx').onclick = closeBoard;
 $('pop').onclick = (e) => { if (e.target === $('pop')) closeBoard(); };
 addEventListener('keydown', (e) => { if (e.code === 'Escape' && closeBoard()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
-$('again').onclick = () => { if (RD.phase === 'tally') { sound(); askName((Math.random() * 99999 | 0) + 1); } };
+// the results screen's button: on to the next dive, or the trip's results, or (after those) a new trip
+$('again').onclick = () => {
+  if (RD.phase !== 'tally') return; sound();
+  if (tallyMode === 'dive' && TRIP.on) { if (tripLeft()) { leaveTally(); showDives(); } else showFinal(); }
+  else { endTrip(); showTrips(); }
+};
 
 // ---------------------------------------------------------------- start: the spot behind the menu, a few garibaldi
 // the menu's hi-score line, from the board
-function showHi() { const t = (world || localBoard())[0]; $('hi').lastChild.textContent = t ? `${t.name}  ${t.score}` : '— — —'; }
+function showHi() { const t = (WORLD[LOC.board] || localBoard())[0]; $('hi').lastChild.textContent = t ? `${t.name}  ${t.score}` : '— — —'; }
 showHi(); lbFetch();
 // the intro card's thumbnails
-photoShoot();
-buildCard(); buildPicker();
+photoShoot(); siteShoot();
+buildCard();
 newRound(1); RD.phase = 'idle';
 { const keep = RD.t; RD.t = 0; camera(0); RD.t = keep; }
 GAME = 1;

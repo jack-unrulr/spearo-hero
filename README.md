@@ -10,13 +10,21 @@ you can, and leave the surfperch alone. Everything is made by code: no images, n
 > The gorgeous procedural underwater world, its WebGPU renderer and the ambient soundscape are theirs (MIT); this
 > repo started as a fork at commit `a596354`, and their history is kept below ours. Go check out the original.
 
-## The round
+## The trip
+
+Press **Start**, pick a trip, type Player 1's name, then pick a dive. A trip is three dive sites in one location
+(Tofino: Kelp Forest, Whale Tail, Coral Grotto), each dived once, in any order. One of them, picked at random, has the
+trophy lingcod: `TROPHY FISH!` flashes when it shows up, and the trophy slot on the dive picker fills with it if you
+land it (or says *Missed*). After the third dive the trip's results add everything up, and the total goes on the board.
+Esc pauses; quitting a trip throws it away.
+
+## A dive
 
 1. **Descent.** The view drops from the surface while the card says what to shoot. *Ready? Set… HUNT!*
 2. **Bottom time.** The hunt music starts and the air bar on the right drains. It turns yellow, then red, and the
    music speeds up. At zero: `SURFACE!`.
-3. **Ascent and tally.** The score counts up, one row per fish with its outline and where the spear went in (lost and
-   wrong fish crossed out), your stats, a verdict on dinner, badges, and the top-10 board (three initials).
+3. **Ascent and results.** The score counts up, one row per fish with its outline and where the spear went in (lost
+   and wrong fish crossed out), your stats, a verdict on dinner and badges. Then back to the dive picker.
 
 **The fish**
 
@@ -43,7 +51,8 @@ row pay a streak bonus, and a shot that slips past a surfperch scores "THREADED 
 burst away across the view. Surfperch are back at their patch in seconds; rockfish come back once things calm down,
 but leave for good after a few scares. The round ends when the air runs out, when nothing is left, or on a surfperch.
 
-Each round is a seeded script: the same seed gives the same fish in the same order (`index.html?seed=1234`).
+Each dive is a seeded script, and a trip's seed sets its dives' seeds and which one has the trophy: the same seed
+gives the same trip (`index.html?seed=1234`).
 
 ## Try it
 
@@ -61,14 +70,14 @@ Nothing to install, and it works offline. It needs a browser with **WebGPU** and
 | Fire | Click. The reel brings the spear back by itself, then the gun reloads (about 1 s) |
 | Pause / menu | `Esc` |
 | Sound on / off | `M` |
-| Performance stats | `H` |
+| Performance stats | `H`, with `?stats` in the URL |
 
 Needs a desktop browser with **WebGPU** (Chrome or Edge) and a mouse. Nothing to install: `index.html` is the whole game.
 
 ## Leaderboards
 
-No accounts, like an arcade cabinet: make the top 10 and type a name (up to 7 letters or numbers). Each location has
-its own board. The world boards live on a tiny server in [`server/`](server): a Cloudflare Worker with a D1 (SQLite)
+No accounts, like an arcade cabinet: each trip starts with a name (up to 7 letters), and its total is posted under
+that name when the trip ends. Each location has its own board of trip totals. The world boards live on a tiny server in [`server/`](server): a Cloudflare Worker with a D1 (SQLite)
 database, well inside Cloudflare's free tier. Until it's deployed, or when it can't be reached, the game keeps a
 top 10 on the device instead.
 
@@ -89,11 +98,12 @@ impossible, so treat the board as a fun one.
 
 ## Locations
 
-Each location is an entry in `LOCATIONS` at the top of `source/src/arcade.js`: a spot in the shared world (the
-diver's position and heading), the words on its dive card, its air, and which species is the target, the trophy and
-the fish to avoid. Species (shape, colours, sizes, speeds, how jumpy) live in `SPEC` in `source/src/fish.js`, with
+Each location is an entry in `LOCATIONS` at the top of `source/src/arcade.js`: its dive sites (each a spot in the
+shared world: the diver's position and heading), the words on its cards, its air, the name of its board, and which
+species is the target, the trophy and the fish to avoid. The photos on the trip and dive cards are taken from each
+site by the game's own renderer while the page loads. Species (shape, colours, sizes, speeds, how jumpy) live in `SPEC` in `source/src/fish.js`, with
 their colour pattern in the fish shader in `source/src/game.js`. Tofino is the only location so far; the world also
-has a sunken ship, a whale-tail rock, arches, tunnels and coral and sponge gardens to set future ones in.
+has a sunken ship, arches, tunnels and sponge gardens to set future ones in.
 
 ## Development
 

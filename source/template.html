@@ -22,12 +22,12 @@ body {
 }
 
 /* the scene: blurred and dimmed behind the menu, comes into focus when you dive */
-canvas {
+#c, #fx {
   position: absolute; width: 100%; height: 100%; touch-action: none; cursor: crosshair;
   transition: filter 1s, transform 1s, opacity 2s;
 }
-body:not(.g) canvas { filter: blur(1vmax) brightness(.5); transform: scale(1.06); }
-.l canvas { opacity: 0; }
+body:not(.g) :is(#c, #fx) { filter: blur(1vmax) brightness(.5); transform: scale(1.06); }
+.l :is(#c, #fx) { opacity: 0; }
 
 /* menu: the loading bar and the buttons share one grid cell, so nothing jumps when they swap */
 #m {
@@ -35,7 +35,53 @@ body:not(.g) canvas { filter: blur(1vmax) brightness(.5); transform: scale(1.06)
   padding: 2.6em 1em; text-align: center; background: radial-gradient(#03131c00 30%, #03131ccc);
   transition: opacity .5s, visibility .5s;
 }
-.g #m, .m #l, .l #g, #a:not(.who) #who, #a.who #g { opacity: 0; visibility: hidden; }
+.g #m, .m #l, .l #g { opacity: 0; visibility: hidden; }
+/* the start page's screens: #m[data-s] is home (logo and Start), trips, name or dives */
+.scr { display: none; }
+#m[data-s=trips] #trips, #m[data-s=dives] #dives { display: grid; justify-items: center; gap: .9em; }
+#m[data-s=name] #who { display: block; }
+#m:not([data-s=home]) :is(#logo, #sub, #a) { display: none; }
+.scr h2 { margin: 0; font: italic 400 2.6em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; -webkit-text-stroke: .03em #071a3a; text-shadow: .06em .06em 0 #071a3a; transform: skewX(-8deg); }
+.cards { display: flex; flex-wrap: wrap; justify-content: center; gap: .9em; max-width: 96vw; }
+.lnk, .lnk:hover { padding: .3em .8em; background: none; box-shadow: none; color: #9ff6ff; font-size: .75em; text-decoration: underline; }
+.lnk[hidden] { display: none; }
+/* a trip: a square card with a photo of the place, its name, and its top score underneath */
+.tcard { display: grid; justify-items: center; gap: .35em; width: 14.5em; padding: .5em .5em .6em; border-radius: .9em; background: #03131cd9; box-shadow: inset 0 0 0 3px #ffe24a, 0 .6em 2em #000a; }
+.tcard .go { display: grid; justify-items: center; gap: .3em; width: 100%; padding: 0 0 .3em; background: none; box-shadow: none; color: #fff; text-transform: none; letter-spacing: 0; }
+.tcard canvas, .dcard canvas { display: block; width: 100% !important; height: auto !important; border-radius: .5em; }
+.tcard b, .dcard b, .tslot b { font: italic 400 1.5em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; }
+.tcard span, .dcard span, .tslot span { font-size: .72em; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #9ff6ff; }
+.tcard .go:focus-visible { outline: none; } .tcard:has(.go:focus-visible) { box-shadow: inset 0 0 0 3px #fff, 0 .6em 2em #000a; }
+.tcard .hs { font: italic 400 1em/1 var(--arc); letter-spacing: .1em; color: #ff4d6d; } .tcard .hs b { font-size: 1em; color: #fff; margin-left: .3em; }
+.tcard .top { padding: .3em .9em; background: none; box-shadow: inset 0 0 0 2px #ffe24a88; color: #ffe24a; font-size: .65em; }
+.tcard .top::before { content: '\1F3C6'; margin-right: .1em; }
+.tcard.soon { align-content: center; box-shadow: inset 0 0 0 3px #7ff3ff33; background: #03131c88; opacity: .7; }
+.tcard.soon i { width: 3em; height: 3em; border-radius: 50%; box-shadow: inset 0 0 0 3px #7ff3ff55; }
+.tcard.soon i::before { content: '?'; display: grid; place-content: center; height: 100%; font: 400 1.8em var(--arc); font-style: normal; color: #7ff3ff88; }
+.tcard.soon b { color: #7ff3ffaa; }
+/* a dive site: photo, name, 'Dive' or its score once done; the trophy's slot sits beside them */
+#dvs { font-size: .8em; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ff6ff; }
+.dcard, .tslot { display: grid; justify-items: center; align-content: start; gap: .35em; width: 12em; padding: .5em .5em .7em; border-radius: .9em; background: #03131cd9; color: #fff; text-transform: none; letter-spacing: 0; }
+.dcard { box-shadow: inset 0 0 0 3px #4dff8a, 0 .6em 2em #000a; }
+.dcard span { padding: .25em .9em; border-radius: 1em; background: #4dff8a; color: #03222d; }
+.dcard.done { box-shadow: inset 0 0 0 3px #7ff3ff44; pointer-events: none; }
+.dcard.done canvas { filter: grayscale(.7) brightness(.6); }
+.dcard.done b { color: #9ff6ff; } .dcard.done span { background: none; color: #fff; font-size: .95em; }
+.dcard.done span::before { content: '\2713\00a0'; color: #4dff8a; }
+.tslot { align-content: center; border: 3px dashed #ffe24a66; background: #03131c88; }
+.tslot canvas { max-width: 100%; height: auto !important; filter: grayscale(1) brightness(.5); opacity: .45; }
+.tslot.got { border-style: solid; border-color: #ffe24a; background: #3a2c00cc; box-shadow: 0 0 1.4em #ffd84a66; }
+.tslot.got canvas { filter: none; opacity: 1; }
+.tslot.got b::before { content: '\1F3C6\00a0'; font-style: normal; }
+.tslot.miss b { color: #ff7a6a; } .tslot.miss span { color: #ff7a6a; }
+/* the options button (top right of the start page) and its popup: detail level and the controls */
+#ob { position: absolute; top: .6em; right: .6em; padding: .3em .6em; background: #03222dd9; box-shadow: inset 0 0 0 2px #7ff3ff, 0 .3em 1em #0009; font-size: 1.3em; color: #e8fbff; opacity: .8; }
+.l #ob { display: none; }
+#opt { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: #020a10cc; }
+#opt[hidden] { display: none; }
+#opt > div { display: grid; justify-items: stretch; gap: .8em; width: 24em; max-width: calc(100% - 2em); max-height: calc(100% - 2em); overflow: auto; padding: 1.4em 1.6em; border-radius: 1em; background: #03131cf2; box-shadow: 0 0 0 2px #7ff3ff66, 0 0 2em #00e5ff44; color: #e8fbff; text-align: center; }
+#opt h2 { margin: 0; font: italic 400 2.2em/1 var(--arc); letter-spacing: .06em; text-transform: uppercase; color: #ffe24a; text-shadow: .06em .06em 0 #7a0c0c; }
+#optx { justify-self: center; }
 :root { --arc: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', system-ui, sans-serif; }
 /* the logo: chrome lettering, italic and leaning forward, a spear through it and a starburst */
 #logo { position: relative; display: grid; justify-items: center; line-height: .86; transform: skewX(-9deg) rotate(-3deg); margin: .2em 0 -.2em; }
@@ -77,6 +123,7 @@ body:not(.g) canvas { filter: blur(1vmax) brightness(.5); transform: scale(1.06)
 #bub i:nth-child(7) { left: 55%; width: .5em; height: .5em; animation-delay: 4.3s; } #bub i:nth-child(8) { left: 44%; width: .8em; height: .8em; animation-delay: .7s; }
 @keyframes rise { to { transform: translateY(-110vh) translateX(1.5em); opacity: .2; } }
 p { margin: 0; }
+[hidden] { display: none !important; }
 #a { display: grid; width: 27em; max-width: 100%; }
 #a > * { grid-area: 1/1; transition: opacity .8s, visibility .8s; }
 #s, #w, #q, #k, #h, #n, #t { font-size: .8em; letter-spacing: .12em; text-transform: uppercase; }
@@ -111,8 +158,6 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 }
 
 
-#loc .top { flex: 1.3; color: #ffe24a; }
-#loc .top::before { content: '\1F3C6'; margin-right: .35em; font-style: normal; }
 /* the leaderboard popup, opened from the location row */
 #pop { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: #020a10cc; }
 #pop[hidden] { display: none; }
@@ -127,12 +172,6 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 /* dark plates under the dive button: detail level, list of controls, touch hint */
 #q, #k, #h { padding: 1em 1.2em; border-radius: .7em; background: #03131cb3; }
 
-/* location picker: one button per location (more to come), the current one lit */
-#loc { display: flex; flex-wrap: wrap; align-items: center; gap: .4em; padding: .4em; border-radius: .7em; background: #03131cb3; font-size: .8em; letter-spacing: .12em; text-transform: uppercase; }
-#loc span { flex: 1; color: #7ff3ff; }
-#loc button { flex: 2; padding: .6em .8em; background: none; box-shadow: none; color: #e8fbff; font: italic 400 1.15em/1 var(--arc); letter-spacing: .08em; }
-#loc button:hover { background: #7ff3ff33; }
-#loc .on { background: linear-gradient(#fff6a8, #e6b81a); color: #071a3a; box-shadow: inset 0 -.2em #0003; pointer-events: none; }
 /* detail level: three buttons in a row, the current one lit */
 #q { display: flex; align-items: center; gap: .4em; padding: .4em; }
 #q span { flex: 1; color: #7ff3ff; }
@@ -150,7 +189,7 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
   box-shadow: inset 0 -.15em #0004; color: #03222d; text-align: center;
 }
 #h { display: none; }
-@media (pointer: coarse), (max-height: 38em) {
+@media (pointer: coarse) {
   #k { display: none; }
 }
 @media (pointer: coarse) {
@@ -195,7 +234,7 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
   border-radius: 1em; background: #03131cd0; box-shadow: inset 0 0 0 2px #7ff3ff55, 0 1em 3em #000a; text-align: center;
   opacity: 0; visibility: hidden; transition: opacity .6s, transform .6s, visibility .6s; pointer-events: none;
 }
-#who { align-self: center; padding: 1.1em 1.4em 1.4em; border: 3px solid #ffe24a; border-radius: 1em; background: #03131ce6; box-shadow: inset 0 0 0 2px #7ff3ff55, 0 1em 3em #000a; color: #fff; }
+#who { width: 22em; max-width: 92vw; padding: 1.1em 1.4em 1.4em; border: 3px solid #ffe24a; border-radius: 1em; background: #03131ce6; box-shadow: inset 0 0 0 2px #7ff3ff55, 0 1em 3em #000a; color: #fff; }
 #who h2 { margin: .1em 0 .2em; font: italic 400 2.6em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; -webkit-text-stroke: .03em #071a3a; text-shadow: .06em .06em 0 #071a3a; transform: skewX(-8deg); }
 #who p { margin: .3em 0; color: #9ff6ff; }
 #nm { display: block; box-sizing: content-box; width: 5.4em; margin: .4em auto .3em; padding: .1em .2em .1em .32em; border: 0; border-bottom: 3px solid #ffe24a; background: none; outline: none; text-align: center;
@@ -247,17 +286,23 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
   background: radial-gradient(#03131ca0, #03131cf0 75%); overflow: hidden; opacity: 0; visibility: hidden; transition: opacity .6s, visibility .6s; text-align: center;
 }
 #tally.on { opacity: 1; visibility: visible; }
-.m #tally { opacity: 0; visibility: hidden; }
+.m #tally { opacity: 0; visibility: hidden; transition: none; }
+.m #card { opacity: 0; visibility: hidden; transition: none; }
 #why { color: #9ff6ff; }
 #tsc { font: italic 400 4.2em/1 var(--arc); color: #ffe24a; -webkit-text-stroke: .03em #071a3a; text-shadow: .06em .06em 0 #071a3a; }
 #tally .tl, #tally .tc { display: grid; justify-items: center; align-content: center; gap: .55em; min-width: 0; max-height: 100%; }
 #tally .tl { grid-template-rows: auto auto auto minmax(0, 1fr); }
-#rows { display: grid; align-content: start; gap: .3em; width: 30em; max-width: 46vw; overflow-y: auto; }
+/* while the rows come in and the score counts (.cnt), the stats column is shut, so the rows sit in the middle; then it
+   opens and they slide left */
+#tally .tc { max-width: 60vw; overflow: clip; overflow-clip-margin: 1.5em; transition: max-width .8s cubic-bezier(.3, 0, .2, 1), max-height .8s cubic-bezier(.3, 0, .2, 1), margin .8s, opacity .5s .45s; }
+#tally.cnt .tc { max-width: 0; margin-left: -3vw; opacity: 0; transition: none; }
+#rows { display: grid; align-content: start; gap: .3em; width: 30em; max-width: 46vw; padding-bottom: .8em; overflow-y: auto; }
 @media (max-aspect-ratio: 5/4) { /* tall or narrow: one column, smaller */
   #tally { flex-direction: column; gap: .4em; font-size: .85em; }
-  #tally .tl, #tally .tc { max-height: none; } #rows { max-width: 94vw; max-height: 26vh; } #stats { max-width: 94vw; }
+  #tally .tl { max-height: none; } #tally .tc { max-width: none; max-height: 100vh; } #tally.cnt .tc { max-width: none; max-height: 0; margin: -.4em 0 0; }
+  #rows { max-width: 94vw; max-height: 26vh; } #stats { max-width: 94vw; }
 }
-.row { display: grid; grid-template-columns: 96px 1fr auto 4em; align-items: center; gap: .6em; padding: .25em .6em; border-radius: .5em; background: #0b3a4d88; text-align: left; animation: rowin .3s; }
+.row { position: relative; display: grid; grid-template-columns: 96px 1fr auto 4em; align-items: center; gap: .6em; padding: .25em .6em; border-radius: .5em; background: #0b3a4d88; text-align: left; animation: rowin .3s; }
 .row canvas { position: static; width: 96px; height: 40px; filter: none !important; transform: none !important; opacity: 1 !important; }
 #stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .3em; width: 26em; max-width: 46vw; animation: rowin .4s; }
 #stats:empty, #awards:empty { display: none; }
@@ -270,16 +315,18 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 #awards { display: flex; flex-wrap: wrap; justify-content: center; gap: .4em; }
 #awards b { padding: .25em .8em; border-radius: 1em; font-size: .75em; letter-spacing: .12em; text-transform: uppercase; color: #03131c; background: linear-gradient(#fff6a8, #e6b81a); animation: pop .5s backwards; }
 #awards b:nth-child(2) { animation-delay: .15s; } #awards b:nth-child(3) { animation-delay: .3s; } #awards b:nth-child(4) { animation-delay: .45s; }
+#big.gold { color: #ffe24a; text-shadow: 0 0 .5em #ffb300, .05em .05em 0 #7a4a00; }
 #big.cd { color: #9ff6ff; } #big.go { color: #fff27a; font-size: 5.5em; }
 .row span:first-of-type { white-space: nowrap; }
+.row.trip i { display: block; margin: 0; font-size: .8em; }
 .row i { font-style: normal; color: #9ff6ff; font-weight: 600; margin-left: .3em; }
 .row .o { white-space: nowrap; font-size: .75em; letter-spacing: .12em; color: #9ff6ff; }
 .row b { text-align: right; color: #7dff9a; } .row b.neg { color: #ff7a6a; }
 /* a landed trophy: gold, glowing, with a badge */
 .row.troph { background: linear-gradient(90deg, #6b4a0acc, #3a2a06aa); box-shadow: inset 0 0 0 1.5px #ffd84a, 0 0 1em #ffd84a55; color: #fff27a; }
-.row.troph span:first-of-type { white-space: normal; } .row.troph em { display: inline-block; margin: .15em 0 0; } /* the badge can drop under the name */
+.row.troph { margin-bottom: .45em; } /* room for the badge that sits on its bottom edge */
 .row.troph i, .row.troph .o { color: #ffe9a0; } .row.troph b { color: #fff27a; }
-.row em { margin-left: .5em; padding: .15em .5em .1em; border-radius: 1em; font: italic 400 .8em/1 var(--arc); letter-spacing: .1em; text-transform: uppercase; vertical-align: .1em;
+.row em { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 50%); z-index: 1; white-space: nowrap; padding: .2em .7em .15em; border-radius: 1em; font: italic 400 .8em/1 var(--arc); letter-spacing: .1em; text-transform: uppercase; vertical-align: .1em;
   color: #3a2200; background: linear-gradient(#fff6a8, #e6b81a); box-shadow: 0 0 .6em #ffd84a99; }
 .row em::before { content: '\1F3C6'; margin-right: .3em; font-style: normal; }
 .row.lost b { color: #ffb35c; }
@@ -297,8 +344,9 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
 </head>
 <body class=l>
 <canvas id=c></canvas>
-<div id=m>
+<div id=m data-s=home>
   <p id=hi>HI-SCORE <b>— — —</b></p>
+  <button id=ob aria-label=Options title=Options>≡</button>
   <div id=logo><span class=l1>Spearo</span><span class=l2>Hero</span><i class=spear></i><i class=burst>Tofino<br>BC</i></div>
   <p id=sub>Breath-hold spearfishing action!</p>
   <div id=a>
@@ -306,25 +354,29 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
     <div id=g>
       <button id=d>Start</button>
       <p id=ps>Press start</p>
-      <p id=loc></p>
-      <p id=q><span>Detail</span><button>Low</button><button>Medium</button><button>High</button></p>
-      <div id=k>
-        <p>
-          <i><b>Mouse</b></i>Aim
-          <i><b>Click</b></i>Fire
-        </p>
-        <p>
-          <i><b>Esc</b></i>Pause
-          <i><b>M</b></i>Mute
-        </p>
-      </div>
+      <button id=quit class=lnk hidden>Quit trip</button>
       <p id=h>Best on a computer with a mouse</p>
     </div>
-    <form id=who><h2>Player 1</h2><p>Enter your name</p><input id=nm maxlength=7 autocomplete=off autocapitalize=characters spellcheck=false enterkeyhint=go aria-label="Player 1 name"><p class=k>Up to 7 letters</p><button id=dv>Dive</button></form>
   </div>
+  <section id=trips class=scr><h2>Choose your trip</h2><div id=tripc class=cards></div><button class="lnk back">Back</button></section>
+  <form id=who class=scr><h2>Player 1</h2><p>Enter your name</p><input id=nm maxlength=7 autocomplete=off autocapitalize=characters spellcheck=false enterkeyhint=go aria-label="Player 1 name"><p class=k>Up to 7 letters</p><button id=dv>Go</button><button type=button class="lnk back">Back</button></form>
+  <section id=dives class=scr><h2 id=dvh></h2><p id=dvs></p><div id=divec class=cards></div><button id=dvq class=lnk>Quit trip</button></section>
   <p id=fp>Free play</p>
   <div id=bub><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 </div>
+<div id=opt hidden role=dialog aria-label=Options><div><h2>Options</h2>
+  <p id=q><span>Detail</span><button>Low</button><button>Medium</button><button>High</button></p>
+  <div id=k>
+    <p>
+      <i><b>Mouse</b></i>Aim
+      <i><b>Click</b></i>Fire
+    </p>
+    <p>
+      <i><b>Esc</b></i>Pause
+      <i><b>M</b></i>Mute
+    </p>
+  </div>
+  <button id=optx>Close</button></div></div>
 <div id=pop hidden role=dialog aria-label="Leaderboard"><div><h2>Top 10</h2><p class=k id=popt></p><ol class=lb id=popl></ol><button id=popx>Close</button></div></div>
 <button id=o aria-label=Menu>≡</button>
 <pre id=i></pre>
