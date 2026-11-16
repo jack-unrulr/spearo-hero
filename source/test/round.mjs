@@ -19,6 +19,13 @@ await c.goto(new URL('../../dev.html', import.meta.url).href + '?lb=' + (LB ? en
 await c.waitFor('window.TT && TT.ready && TT.arc && document.body.className !== "l"');
 await c.ev('localStorage.removeItem("spearo.scores.tofino")');
 
+// ---- the start screen's leaderboard popup: opens from the location row, Esc closes it and leaves the menu up
+await c.ev('document.querySelector("#loc .top").click()');
+await c.sleep(200);
+check(await c.ev('!document.getElementById("pop").hidden && document.getElementById("popl").textContent.includes("No scores yet")'), 'Top 10 opens the leaderboard popup');
+await c.tap('Escape'); await c.sleep(100);
+check(await c.ev('document.getElementById("pop").hidden && document.body.className === "m"'), 'Esc closes the popup, menu still open');
+
 // ---- run 1
 await c.ev(`TT.arc.go(${seed}); TT.arc.speed(1.5)`);
 check((await st()).phase === 'descent', 'round starts with the descent');

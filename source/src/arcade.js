@@ -390,6 +390,7 @@ function buildPicker() {
       buildPicker(); buildCard(); world = null; showHi(); lbFetch(); newRound(1); RD.phase = 'idle'; camera(0); };
     el.append(b);
   }
+  const t = document.createElement('button'); t.className = 'top'; t.textContent = 'Top 10'; t.onclick = openBoard; el.append(t);
 }
 function newRound(seed) {
   RD.seed = seed; RD.script = makeScript(seed); RD.next = 0; RD.t = 0; RD.air = AIR; RD.score = 0; RD.rows = []; RD.alarm = 0; RD.end = ''; RD.endT = 0; RD.slow = 0; RD.shots = 0; RD.stamp = ''; RD.curious = 0; RD.back = [0, 0, 0]; RD.lowAir = 0; RD.beat = 0;
@@ -710,6 +711,25 @@ addEventListener('keydown', (e) => {
   else if (e.code === 'Enter' && ini.length) { submitIni(ini); return; }
   showIni(); if (SFX) SFX(3);
 }, true);
+// the leaderboard popup on the start screen: the current location's board, fetched fresh
+function fillBoard(b, note) {
+  const ol = $('popl'); ol.innerHTML = '';
+  $('popt').textContent = LOC.name + ' · ' + note;
+  b.forEach((e) => { const li = document.createElement('li'); li.innerHTML = '<b></b><span></span>'; li.firstChild.textContent = e.name; li.lastChild.textContent = e.score; ol.append(li); });
+  if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
+}
+async function openBoard() {
+  if (SFX) SFX(3);
+  $('pop').hidden = false; setTimeout(() => $('popx').focus(), 50);
+  fillBoard(world || localBoard(), LBU ? 'Loading…' : 'This device');
+  if (!LBU) return;
+  const w = await lbFetch(); if ($('pop').hidden) return;
+  fillBoard(w || localBoard(), w ? 'World' : 'This device · world board offline');
+}
+const closeBoard = () => { if ($('pop').hidden) return false; $('pop').hidden = true; $('loc').querySelector('.top').focus(); return true; };
+$('popx').onclick = closeBoard;
+$('pop').onclick = (e) => { if (e.target === $('pop')) closeBoard(); };
+addEventListener('keydown', (e) => { if (e.code === 'Escape' && closeBoard()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 $('again').onclick = () => { if (RD.phase === 'tally') { sound(); startRound((Math.random() * 99999 | 0) + 1); } };
 
 // ---------------------------------------------------------------- start: the spot behind the menu, a few garibaldi
