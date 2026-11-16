@@ -576,7 +576,7 @@ bDive.onclick = go; $('o').onclick = () => ui(true);
 $('ob').onclick = () => { $('opt').hidden = false; setTimeout(() => $('optx').focus(), 50); };
 $('optx').onclick = () => { $('opt').hidden = true; $('ob').focus(); };
 $('opt').onclick = (e) => { if (e.target === $('opt')) $('opt').hidden = true; };
-addEventListener('keydown', (e) => { if (e.code === 'Escape' && !$('opt').hidden) { $('opt').hidden = true; e.stopImmediatePropagation(); } }, true);
+addEventListener('keydown', (e) => { if (e.code === 'Escape' && !$('opt').hidden) { $('opt').hidden = true; e.stopImmediatePropagation(); if (SFX) SFX(22); } }, true);
 // detail buttons: the current level is lit, the others reload the page with theirs
 $('q').querySelectorAll('button').forEach((b, i) => { if (i === 2 - LV) b.className = 'on'; else b.onclick = () => { keep('abyssal', 2 - i); location.reload(); }; });
 

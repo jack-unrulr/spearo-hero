@@ -64,7 +64,7 @@ function mkSound(ac) {
   const tone = pool(4, 0.15), tick = pool(3, 0.05, 'square');
   let tR = 0;
   // 0 band release + spear hiss, 1 spear on rock, 2 hit, 3 click, 4 band stretch, 5 spear slides in, 6 fish thrash, 7 fish landed
-  SFX = (k) => {
+  SFX = (k, a = 0) => {
     const t = ac.currentTime + 0.01;
     if (k === 0) { play(tone, t, 150, 42, 0.22, 0.5, 0.004); hiss(t, 900, 200, 0.12, 0.5, 0.7); hiss(t + 0.03, 3200, 700, 0.55, 0.16, 1.2, 0.03); }
     else if (k === 1) { play(tone, t, 1900, 1500, 0.12, 0.1, 0.002); hiss(t, 2500, 1200, 0.08, 0.2, 3); }
@@ -76,6 +76,8 @@ function mkSound(ac) {
     else if (k === 7) { play(tone, t, 300, 520, 0.12, 0.16, 0.02); play(tone, t + 0.09, 520, 780, 0.14, 0.12, 0.02); }
     // arcade: 8 stoned, 9 fish held, 10 tore off, 11 protected buzzer, 12 got away, 13 countdown, 14 go, 15 streak,
     // 16 low-air heartbeat, 17 tally fanfare, 18 miss, 19 bonus
+    // menus: 20 select (a soft click), 21 confirm (rising three-note), 22 back (falling blip), 23 dive start (a sweep
+    // up, a splash, a trail of bubbles and a chord), 24 typing; 25 the score counting up (a = how far, 0-1: it climbs)
     else if (k === 8) { [3, 7, 10, 15, 19].forEach((n, i) => beep(t + i * 0.06, st(n), 0, 0.14, 0.13)); beep(t + 0.32, st(22), st(27), 0.45, 0.12); hiss(t + 0.3, 6000, 9000, 0.4, 0.12, 3); }
     else if (k === 9) { beep(t, st(3), 0, 0.09, 0.12); beep(t + 0.09, st(10), 0, 0.25, 0.12); }
     else if (k === 10) { beep(t, st(-2), st(-9), 0.22, 0.13); beep(t + 0.24, st(-5), st(-14), 0.35, 0.13); }
@@ -87,7 +89,18 @@ function mkSound(ac) {
     else if (k === 16) { play(tone, t, 70, 45, 0.12, 0.35, 0.005); play(tone, t + 0.16, 65, 42, 0.12, 0.25, 0.005); }
     else if (k === 17) { [3, 7, 10, 15].forEach((n, i) => beep(t + i * 0.11, st(n), 0, 0.2, 0.12)); [10, 15, 19].forEach((n) => beep(t + 0.46, st(n), 0, 0.8, 0.09)); }
     else if (k === 18) beep(t, st(-9), st(-16), 0.25, 0.07);
-    else beep(t, st(15), st(20), 0.12, 0.1);
+    else if (k === 19) beep(t, st(15), st(20), 0.12, 0.1);
+    else if (k === 20) { play(tick, t, 2400, 1800, 0.025, 0.06, 0.001); hiss(t, 4200, 3000, 0.025, 0.12, 2.5, 0.001); }
+    else if (k === 21) { [10, 15, 22].forEach((n, i) => beep(t + i * 0.055, st(n), 0, 0.1, 0.09)); beep(t + 0.165, st(27), 0, 0.22, 0.07); }
+    else if (k === 22) { beep(t, st(15), st(8), 0.09, 0.07); beep(t + 0.07, st(8), st(3), 0.13, 0.06); }
+    else if (k === 23) {
+      beep(t, st(-9), st(15), 0.38, 0.1); beep(t + 0.04, st(-2), st(22), 0.38, 0.07);           // the sweep up
+      hiss(t + 0.34, 3400, 260, 1, 0.38, 0.7, 0.01);                                             // into the water
+      for (let i = 0; i < 7; i++) { const f = 1100 - i * 95; play(bub, t + 0.4 + i * 0.075, f, f * 1.9, 0.07, 0.09, 0.004); } // bubbles
+      [3, 10, 15, 22].forEach((n, i) => beep(t + 0.4 + i * 0.02, st(n), 0, 0.7, 0.07));         // and a bright chord
+    }
+    else if (k === 24) beep(t, st(20) * rr(0.98, 1.02), 0, 0.035, 0.05, 0.002);
+    else if (k === 25) beep(t, st(8 + a * 14), 0, 0.03, 0.045, 0.002);
   };
   // the hunt track: kick, hats, clap, a sawtooth bass line in D minor and an arpeggio that comes in when air is low
   const mus = G(0, out), musF = BQ('lowpass', 700, 5, mus), nzM = mkNz(2, mus), hissM = hissOf(nzM);

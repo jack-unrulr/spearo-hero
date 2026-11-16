@@ -113,6 +113,7 @@
     fxc.restore();
   };
   TT.clean = (v) => { hideGun = v; for (const id of ['x', 'hud', 'fx']) $(id).style.visibility = v ? 'hidden' : ''; };
+  TT.audio = () => ({ ac: AC, out: OUT, sfx: SFX }); // the sound graph, for measuring the sounds
   TT.floor = floorY;
   TT.freeze = (v) => { simOff = v ? 2 : 0; };
 }

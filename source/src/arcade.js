@@ -445,7 +445,7 @@ function tripStats() { // the dives' stats added up (the biggest fish and best s
 }
 function startDive(k, seed) {
   if (!TRIP.on || TRIP.dives[k]) return;
-  TRIP.cur = k; useSite(k); buildCard(); $('m').dataset.s = 'home'; $('quit').hidden = false; ui(false); bDive.textContent = 'Resume';
+  TRIP.cur = k; useSite(k); buildCard(); sound(); if (SFX) SFX(23); $('m').dataset.s = 'home'; $('quit').hidden = false; ui(false); bDive.textContent = 'Resume';
   startRound(seed ?? TRIP.seed * 7 + k + 1);
 }
 function leaveTally() { for (const t of tallyTimers) clearTimeout(t); tallyTimers = []; newRound(1); RD.phase = 'idle'; camera(0); }
@@ -453,6 +453,13 @@ function endTrip() { TRIP.on = 0; TRIP.cur = -1; TRIP.dives = []; bDive.textCont
 
 // ---------------------------------------------------------------- screens on the start page
 // Start > trip picker > Player 1's name > dive picker > a dive and its results, back to the picker > trip results.
+// Every button on these screens beeps when clicked: forward ones (Start, a trip, Next dive…) confirm, Back and Close go
+// down, the rest select. Picking a dive plays the dive-start sound instead (startDive), and the name form its own.
+addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || b.disabled || b.closest('#hud') || b === $('dv') || b.classList.contains('dcard')) return;
+  sound(); if (!SFX) return;
+  SFX(b.matches('.back, #popx, #optx') ? 22 : b.matches('#d, .go, #again') ? 21 : 20);
+}, true);
 // #m[data-s] says which is up: home, trips, name, dives.
 function show(s) { $('m').dataset.s = s; ui(true); }
 function arcGo() { // the home screen's button: resume a paused dive (true), or go and pick a trip (false: the menu stays up)
@@ -466,7 +473,7 @@ function showTrips() {
     const c = document.createElement('div'), b = document.createElement('button');
     c.className = 'tcard'; b.className = 'go'; b.append(shot(l, 0, 208, 150));
     b.insertAdjacentHTML('beforeend', `<b>${l.name}</b><span>${l.blurb} · ${l.sites.length} dives</span>`);
-    b.onclick = () => { sound(); useLocation(l); try { localStorage.setItem('spearo.loc', l.id); } catch {} buildCard(); showHi(); askName(); };
+    b.onclick = () => { useLocation(l); try { localStorage.setItem('spearo.loc', l.id); } catch {} buildCard(); showHi(); askName(); };
     c.append(b); c.insertAdjacentHTML('beforeend', '<div class=under><button class=top>Top 10</button></div>');
     c.querySelector('.top').onclick = () => openBoard(l);
     el.append(c);
@@ -482,14 +489,14 @@ const myName = () => { try { const v = localStorage.getItem('spearo.name'); retu
 const cleanName = (v) => v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, NAMEN);
 function askName() { iniOn = true; const n = $('nm'); n.value = myName(); show('name'); setTimeout(() => { n.focus(); n.select(); }, 60); }
 function closeName() { iniOn = false; $('nm').blur(); }
-$('nm').oninput = (e) => { const n = e.target, v = cleanName(n.value); if (v !== n.value) n.value = v; };
+$('nm').oninput = (e) => { const n = e.target, v = cleanName(n.value); if (v !== n.value) n.value = v; else if (SFX) SFX(24); };
 $('who').onsubmit = (e) => {
   e.preventDefault(); const v = cleanName($('nm').value); if (!v || !iniOn) { $('nm').focus(); return; }
-  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} closeName(); sound();
+  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} closeName(); sound(); if (SFX) SFX(21);
   newTrip(seedFromUrl ?? (Math.random() * 99999 | 0) + 1); seedFromUrl = null; showDives();
 };
 // typing in the name box doesn't reach the game's keys (M, fire…); Esc goes back to the trips
-addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { closeName(); showTrips(); } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
+addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { closeName(); showTrips(); if (SFX) SFX(22); } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
 $('trips').querySelector('.back').onclick = () => { show('home'); };
 $('who').querySelector('.back').onclick = () => { closeName(); showTrips(); };
 // the dive picker: a card per site (done ones show their score), and the trophy's slot: empty until the trophy dive is
@@ -499,7 +506,7 @@ function showDives() {
   LOC.sites.forEach((st, k) => {
     const d = TRIP.dives[k], b = document.createElement('button'); b.className = 'dcard' + (d ? ' done' : ''); b.disabled = !!d;
     b.append(shot(LOC, k, 176, 110)); b.insertAdjacentHTML('beforeend', `<b>${st.name}</b><span>${d ? d.score + ' pts' : 'Dive'}</span>`);
-    b.onclick = () => { sound(); startDive(k); };
+    b.onclick = () => startDive(k);
     el.append(b);
   });
   const T = LOC.trophy, td = TRIP.dives[TRIP.trophy], got = td && td.st.trophy, r = got && td.rows.find((r) => r.s === T && r.outcome !== 'GOT AWAY');
@@ -763,10 +770,12 @@ function tallyRun(title, why, list, total, done) {
   const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('lbt').textContent = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; $('again').hidden = true;
   for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
   list.forEach((el, k) => tallyTimers.push(setTimeout(() => { rows.append(el); if (SFX) SFX(3); }, 400 + k * 380)));
-  const t0 = 400 + list.length * 380, tsc = $('tsc'), mode = tallyMode, t1 = performance.now() + t0; tsc.textContent = 0;
+  const t0 = 400 + list.length * 380, tsc = $('tsc'), mode = tallyMode, t1 = performance.now() + t0; let tickT = 0; tsc.textContent = 0;
   const count = (now) => {
     if (RD.phase !== 'tally' || tallyMode !== mode) return;
-    const u = clamp((now - t1) / 1200, 0, 1); tsc.textContent = round(total * u); if (u < 1) requestAnimationFrame(count); else tallyTimers.push(setTimeout(() => { if (RD.phase !== 'tally' || tallyMode !== mode) return; HUD.tally.classList.remove('cnt'); done(); }, 450));
+    const u = clamp((now - t1) / 1200, 0, 1); tsc.textContent = round(total * u);
+    if (total > 0 && now - tickT > 55 && u < 1) { tickT = now; if (SFX) SFX(25, u); } // the counter ticks, climbing in pitch
+    if (u < 1) requestAnimationFrame(count); else tallyTimers.push(setTimeout(() => { if (RD.phase !== 'tally' || tallyMode !== mode) return; HUD.tally.classList.remove('cnt'); done(); }, 450));
   };
   tallyTimers.push(setTimeout(() => requestAnimationFrame(count), t0));
 }
@@ -847,7 +856,6 @@ function fillBoard(l, b, note) {
   if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
 }
 async function openBoard(l) {
-  if (SFX) SFX(3);
   popFrom = document.activeElement; $('pop').hidden = false; setTimeout(() => $('popx').focus(), 50);
   fillBoard(l, WORLD[l.board] || localBoard(l), LBU ? 'Loading…' : 'This device');
   if (!LBU) return;
@@ -857,7 +865,7 @@ async function openBoard(l) {
 const closeBoard = () => { if ($('pop').hidden) return false; $('pop').hidden = true; if (popFrom && popFrom.isConnected) popFrom.focus(); return true; };
 $('popx').onclick = closeBoard;
 $('pop').onclick = (e) => { if (e.target === $('pop')) closeBoard(); };
-addEventListener('keydown', (e) => { if (e.code === 'Escape' && closeBoard()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+addEventListener('keydown', (e) => { if (e.code === 'Escape' && closeBoard()) { e.stopImmediatePropagation(); e.preventDefault(); if (SFX) SFX(22); } }, true);
 // the results screen's button: on to the next dive, or the trip's results, or (after those) a new trip
 $('again').onclick = () => {
   if (RD.phase !== 'tally') return; sound();
