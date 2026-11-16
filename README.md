@@ -36,7 +36,7 @@ The spear stops in the first fish it meets, so wait for a clean window.
 | Body | Usually holds; about 1 in 5 fights free on the way in | 1 × |
 | Tail | Usually tears out | 0.6 × if it holds |
 
-A fish that tears free bolts, bleeding: one more chance. If it leaves the view, `GOT AWAY` costs 100. Fish taken in a
+A fish that tears free bolts, bleeding: one more chance. If it leaves the view, `GOT AWAY` still pays for the hit, less 100 (at least 50). Fish taken in a
 row pay a streak bonus, and a shot that slips past a surfperch scores "THREADED IT!".
 
 **Scaring them.** Every shot raises the alarm, which dies down if you wait. Fish near the spear's path flinch, then

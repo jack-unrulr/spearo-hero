@@ -219,9 +219,11 @@ const basePts = (f) => round(FS[f.i * FN + fLEN] * 1000 / 50) * 50 * (isT(f.s) ?
 const cm = (f) => round(FS[f.i * FN + fLEN] * 100), inch = (f) => round(FS[f.i * FN + fLEN] * 39.37); // lengths are shown in inches
 function addScore(n) { RD.score = max(0, RD.score + n); HUD.sc.textContent = RD.score; } // never below zero
 function row(f, outcome, pts) { RD.rows.push({ s: f.s, n: SPEC[f.s].n, inch: inch(f), zone: f.hit ? f.hit.zone : '', frac: f.hit ? f.hit.frac : 0, outcome, pts }); }
+// a wounded fish that leaves the view: the hit still pays, 100 less (never under 50), so a lost fish never costs points
 function lost(f) {
   if (f.wound !== 1) return; f.wound = 2; RD.st.lost++;
-  const o = f.i * FN; callout(FS[o], FS[o + 1], FS[o + 2], 'GOT AWAY  −100', '#ffb35c'); addScore(-100); row(f, 'GOT AWAY', -100); if (SFX) SFX(12);
+  const o = f.i * FN, p = max(50, (f.pts || 0) - 100);
+  callout(FS[o], FS[o + 1], FS[o + 2], `GOT AWAY  +${p}`, '#ffb35c'); addScore(p); row(f, 'GOT AWAY', p); if (SFX) SFX(12);
 }
 const pick = (a) => a[rng() * a.length | 0];
 // a fish taken (stoned, or landed): the streak grows, and from the second in a row it pays a bonus
@@ -640,9 +642,10 @@ function showTally() {
   const list = RD.rows.length ? RD.rows : [{ none: 1 }];
   list.forEach((r, k) => tallyTimers.push(setTimeout(() => {
     const bad = r.outcome === 'GOT AWAY' ? 'lost' : r.outcome === 'WRONG FISH' ? 'prot' : '';
-    const el = document.createElement('div'); el.className = 'row ' + bad;
+    const tro = !bad && !r.none && isT(r.s); // a landed trophy: gold row with a badge
+    const el = document.createElement('div'); el.className = 'row ' + bad + (tro ? ' troph' : '');
     if (r.none) el.innerHTML = '<span>No fish this round</span>';
-    else { el.append(silhouette(r.s, r.zone ? r.frac : null, bad)); el.insertAdjacentHTML('beforeend', `<span>${r.n} <i>${r.inch} in</i></span><span class=o>${r.outcome}</span><b class=${r.pts < 0 ? 'neg' : ''}>${r.pts > 0 ? '+' : ''}${r.pts}</b>`); }
+    else { el.append(silhouette(r.s, r.zone ? r.frac : null, bad)); el.insertAdjacentHTML('beforeend', `<span>${r.n} <i>${r.inch} in</i>${tro ? '<em>Trophy</em>' : ''}</span><span class=o>${r.outcome}</span><b class=${r.pts < 0 ? 'neg' : ''}>${r.pts > 0 ? '+' : ''}${r.pts}</b>`); }
     rows.append(el); if (SFX) SFX(3);
   }, 400 + k * 380)));
   const t0 = 400 + list.length * 380, tsc = $('tsc'); tsc.textContent = 0;

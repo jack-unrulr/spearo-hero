@@ -81,7 +81,8 @@ check(await shoot(-0.33, { hold: false }), 'found a clear tail shot');
 check(await until(`TT.arc.fish().filter((f) => f.wound).length > ${before}`, 5000), 'tail shot tears off: a wounded fish');
 await c.sleep(200); await snap('4-tore-off');
 await c.ev('TT.arc.rig(null)');
-check(await until('TT.arc.state().rows.some((r) => r.outcome === "GOT AWAY")', 15000), 'the wounded fish gets away and costs points');
+check(await until('TT.arc.state().rows.some((r) => r.outcome === "GOT AWAY")', 15000), 'the wounded fish gets away (its points cut by 100)');
+check(await c.ev('TT.arc.state().rows.find((r) => r.outcome === "GOT AWAY").pts >= 50'), 'a fish that got away still pays at least 50');
 
 // scare and return: after the shots the alarm is up; it decays, and the rockfish keep coming
 const alarm = (await st()).alarm;

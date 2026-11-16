@@ -20,7 +20,7 @@
     // a tally with n made-up fish, for checking the layout
     fakeTally: (n) => {
       RD.rows = [];
-      for (let k = 0; k < n; k++) { const s = k === 3 ? 1 : k === 5 ? 2 : 0, o = k === 5 ? 'WRONG FISH' : k === 4 ? 'GOT AWAY' : ['STONED', 'BODY SHOT', 'TAIL SHOT'][k % 3]; RD.rows.push({ s, n: SPEC[s].n, inch: s === 1 ? 38 : 16 + k, zone: ['head', 'body', 'tail'][k % 3], frac: [0.3, 0, -0.3][k % 3], outcome: o, pts: k === 5 ? -500 : k === 4 ? -100 : 600 }); }
+      for (let k = 0; k < n; k++) { const s = k === 3 ? 1 : k === 5 ? 2 : 0, o = k === 5 ? 'WRONG FISH' : k === 4 ? 'GOT AWAY' : ['STONED', 'BODY SHOT', 'TAIL SHOT'][k % 3]; RD.rows.push({ s, n: SPEC[s].n, inch: s === 1 ? 38 : 16 + k, zone: ['head', 'body', 'tail'][k % 3], frac: [0.3, 0, -0.3][k % 3], outcome: o, pts: k === 5 ? -500 : k === 4 ? 110 : s === 1 ? 1500 : 600 }); }
       RD.score = 2800; Object.assign(RD.st, { shots: 9, hits: 7, stoned: 3, landed: 5, biggest: 38, best: 3, bonus: 450, threads: 1, trophy: 1 });
       RD.end = 'air'; RD.phase = 'tally'; RD.endT2 = ASCENT; showTally();
     }, // dev: the round does not end when the scene empties
