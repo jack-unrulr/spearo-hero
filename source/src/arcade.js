@@ -216,9 +216,9 @@ function stepFish(f, dt) {
 // ---------------------------------------------------------------- scoring
 const ZONE = (frac) => frac > 0.2 ? 'head' : frac < -0.22 ? 'tail' : 'body';
 const basePts = (f) => round(FS[f.i * FN + fLEN] * 1000 / 50) * 50 * (isT(f.s) ? 2 : 1);
-const cm = (f) => round(FS[f.i * FN + fLEN] * 100);
+const cm = (f) => round(FS[f.i * FN + fLEN] * 100), inch = (f) => round(FS[f.i * FN + fLEN] * 39.37); // lengths are shown in inches
 function addScore(n) { RD.score = max(0, RD.score + n); HUD.sc.textContent = RD.score; } // never below zero
-function row(f, outcome, pts) { RD.rows.push({ s: f.s, n: SPEC[f.s].n, cm: cm(f), zone: f.hit ? f.hit.zone : '', frac: f.hit ? f.hit.frac : 0, outcome, pts }); }
+function row(f, outcome, pts) { RD.rows.push({ s: f.s, n: SPEC[f.s].n, inch: inch(f), zone: f.hit ? f.hit.zone : '', frac: f.hit ? f.hit.frac : 0, outcome, pts }); }
 function lost(f) {
   if (f.wound !== 1) return; f.wound = 2; RD.st.lost++;
   const o = f.i * FN; callout(FS[o], FS[o + 1], FS[o + 2], 'GOT AWAY  −100', '#ffb35c'); addScore(-100); row(f, 'GOT AWAY', -100); if (SFX) SFX(12);
@@ -226,7 +226,7 @@ function lost(f) {
 const pick = (a) => a[rng() * a.length | 0];
 // a fish taken (stoned, or landed): the streak grows, and from the second in a row it pays a bonus
 function took(f, x, y, z) {
-  const S = RD.st; S.landed++; S.biggest = max(S.biggest, cm(f)); if (isT(f.s)) S.trophy = 1;
+  const S = RD.st; S.landed++; S.biggest = max(S.biggest, inch(f)); if (isT(f.s)) S.trophy = 1;
   S.streak++; S.best = max(S.best, S.streak);
   if (S.streak > 1) {
     const b = 100 * (S.streak - 1); S.bonus += b; addScore(b);
@@ -305,7 +305,7 @@ document.body.insertAdjacentHTML('beforeend', `<canvas id=fx></canvas>
 <div id=hud><p id=sc0>1UP <b id=sc>0</b></p><div id=air><i></i><span>AIR</span></div></div>
 <div id=card></div>
 <p id=big></p>
-<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><div id=ini hidden><p>High score! Enter your name</p><p id=lt><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b></p><p class=k>Up to 7 letters or numbers · Enter</p></div><p id=lbt class=k></p><ol id=lb></ol><p class=k id=seedl></p><button id=again>Dive again</button></div></div>`);
+<div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><div id=ini hidden><p>High score! Enter your name</p><p id=lt><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b><b>_</b></p><p class=k>Up to 7 letters or numbers · Enter</p></div><p id=lbt class=k></p><ol id=lb></ol><button id=again>Dive again</button></div></div>`);
 // the fx canvas has to come after the scene canvas but under the HUD: move it next to the canvas
 canvas.after($('fx'));
 const HUD = { sc: $('sc'), air: $('air'), fill: $('air').firstChild, card: $('card'), big: $('big'), tally: $('tally') };
@@ -375,7 +375,7 @@ function drawFx(dt) {
 // the dive card for the current location: what to hunt (with photos), what to avoid, the tip
 function buildCard() {
   const fig = (s, extra, cls) => `<figure data-s=${s}${cls ? ' class=' + cls : ''}><figcaption>${SPEC[s].n}${extra || ''}</figcaption></figure>`;
-  HUD.card.innerHTML = `<p class=k>Round 1</p><h2>${LOC.name}</h2><p class=d>${LOC.blurb} · one breath · ${AIR} s on the bottom</p>
+  HUD.card.innerHTML = `<h2>${LOC.name}</h2><p class=d>${LOC.blurb} · one breath · ${AIR} s on the bottom</p>
 <div class=cols><div class="cc hunt"><b class=hd>Hunt</b><div class=fs>${fig(LOC.hunt)}${fig(LOC.trophy, ' <em>Trophy ×2</em>')}</div></div>
 <div class="cc avoid"><b class=hd>Avoid</b><div class=fs>${fig(LOC.avoid, '', 'no')}</div><p>${LOC.avoidWhy}</p></div></div>
 <p class=tip><i></i><span><b>Aim for the head!</b> Head shots stone the fish. Body and tail shots can tear free.</span></p>`;
@@ -400,7 +400,6 @@ function newRound(seed) {
   HUD.sc.textContent = 0; HUD.tally.className = ''; body.classList.remove('tal');
   // the reel and gun start clean
   gst = 0; stopped = 0; spFish = -1; fireReq = 0; limp = 0; G[gB1] = G[gB2] = 1; G[gSEAT] = 0; G[gPOSE] = 0; REEL = 0;
-  HUD.card.querySelector('.k').textContent = `Round ${seed}`;
   // garibaldi are already home when you arrive
   for (const e of RD.script) if (e.t === 0) { const f = fishOf(e.s); if (f) { spawn(f); placeGaribaldi(f, 0); } }
   while (RD.next < RD.script.length && RD.script[RD.next].t === 0) RD.next++;
@@ -636,14 +635,13 @@ function showTally() {
   body.classList.add('tal'); HUD.tally.className = 'on';
   $('why').textContent = RD.end === 'protected' ? 'Speared a surfperch' : RD.end === 'air' ? 'Out of air' : 'Nothing left to hunt';
   const rows = $('rows'); rows.innerHTML = ''; $('lb').innerHTML = ''; $('stats').innerHTML = $('verdict').textContent = $('awards').innerHTML = ''; statsShown = 0; $('ini').hidden = true; $('again').hidden = true;
-  $('seedl').textContent = `Round ${RD.seed}`;
   for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
   const list = RD.rows.length ? RD.rows : [{ none: 1 }];
   list.forEach((r, k) => tallyTimers.push(setTimeout(() => {
     const bad = r.outcome === 'GOT AWAY' ? 'lost' : r.outcome === 'WRONG FISH' ? 'prot' : '';
     const el = document.createElement('div'); el.className = 'row ' + bad;
     if (r.none) el.innerHTML = '<span>No fish this round</span>';
-    else { el.append(silhouette(r.s, r.zone ? r.frac : null, bad)); el.insertAdjacentHTML('beforeend', `<span>${r.n} <i>${r.cm} cm</i></span><span class=o>${r.outcome}</span><b class=${r.pts < 0 ? 'neg' : ''}>${r.pts > 0 ? '+' : ''}${r.pts}</b>`); }
+    else { el.append(silhouette(r.s, r.zone ? r.frac : null, bad)); el.insertAdjacentHTML('beforeend', `<span>${r.n} <i>${r.inch} in</i></span><span class=o>${r.outcome}</span><b class=${r.pts < 0 ? 'neg' : ''}>${r.pts > 0 ? '+' : ''}${r.pts}</b>`); }
     rows.append(el); if (SFX) SFX(3);
   }, 400 + k * 380)));
   const t0 = 400 + list.length * 380, tsc = $('tsc'); tsc.textContent = 0;
@@ -666,7 +664,7 @@ function verdict() {
 function showStats() {
   if (statsShown) return; statsShown = 1;
   const S = RD.st, acc = S.shots ? round(S.hits / S.shots * 100) : 0;
-  const cells = [['Shots', S.shots], ['Accuracy', S.shots ? acc + '%' : '—'], ['Stoned', S.stoned], ['Landed', S.landed], ['Biggest', S.biggest ? S.biggest + ' cm' : '—'], ['Best streak', S.best], ['Got away', S.lost], ['Bonus', S.bonus ? '+' + S.bonus : 0]];
+  const cells = [['Shots', S.shots], ['Accuracy', S.shots ? acc + '%' : '—'], ['Stoned', S.stoned], ['Landed', S.landed], ['Biggest', S.biggest ? S.biggest + ' in' : '—'], ['Best streak', S.best], ['Got away', S.lost], ['Bonus', S.bonus ? '+' + S.bonus : 0]];
   $('stats').innerHTML = cells.map(([k, v]) => `<p><b>${v}</b><span>${k}</span></p>`).join('');
   $('verdict').textContent = verdict();
   const aw = [];
@@ -701,7 +699,7 @@ function showBoard(b, me, rank) {
   const ol = $('lb'); ol.innerHTML = '';
   $('lbt').textContent = (b === world || rank ? 'World top 10' : 'Top 10 on this device') + ' · ' + LOC.name + (rank ? ` · you are #${rank}` : '') + (LBU && !world ? ' · world board offline' : '');
   b.forEach((e, k) => { const li = document.createElement('li'); if (k === me) li.className = 'me'; li.innerHTML = `<b></b><span>${e.score}</span>`; li.firstChild.textContent = e.name; ol.append(li); });
-  if (!b.length) ol.innerHTML = '<li><span>No scores yet</span></li>';
+  if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
   $('again').hidden = false; setTimeout(() => $('again').focus(), 50);
 }
 addEventListener('keydown', (e) => {

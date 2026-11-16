@@ -100,7 +100,7 @@ check(s1.rows.some((r) => r.outcome === 'WRONG FISH' && r.pts < 0), 'tally has t
 check(await until(`TT.arc.state().tallyRows === ${s1.rows.length}`, 8000), 'one tally row with a silhouette per fish');
 check(await until('document.querySelectorAll("#stats p").length === 8 && document.getElementById("verdict").textContent.length > 0', 8000), 'end stats and verdict shown');
 const acc = await c.ev('document.querySelector("#stats p:nth-child(2) b").textContent'); log('accuracy', acc, '·', await c.ev('document.getElementById("verdict").textContent'));
-log('score', s1.score, s1.rows.map((r) => `${r.n} ${r.cm}cm ${r.outcome} ${r.zone}@${r.frac.toFixed(2)} ${r.pts}`).join(' | '));
+log('score', s1.score, s1.rows.map((r) => `${r.n} ${r.inch}in ${r.outcome} ${r.zone}@${r.frac.toFixed(2)} ${r.pts}`).join(' | '));
 if (s1.score > 0) {
   check(await until('TT.arc.state().ini', 15000), 'asks for initials');
   for (const k of ['KeyT', 'KeyS', 'KeyT', 'Enter']) { await c.tap(k); await c.sleep(80); }
