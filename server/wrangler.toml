@@ -1,0 +1,11 @@
+# Spearo Hero leaderboard: a Cloudflare Worker with a D1 (SQLite) database. Free tier is plenty.
+# Setup once:  npx wrangler login  ·  npx wrangler d1 create spearo-scores  (paste the id below)
+#              npm run db:init:remote  ·  npm run deploy
+name = "spearo-hero-scores"
+main = "src/worker.js"
+compatibility_date = "2025-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "spearo-scores"
+database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"

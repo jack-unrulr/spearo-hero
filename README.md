@@ -1,106 +1,121 @@
-# Abyssal Garden
+# Spearo Hero
 
-**A dreamy underwater world you can swim through, right in your browser.**
+**Breath-hold spearfishing action, right in your browser.**
 
-Towering kelp forests, sunbeams pouring through a rippling surface, a sunken ship, manta rays gliding overhead.
-And all of it is made by code: no images, no 3D models, no sound files. The whole world fits in **one 96 KB HTML file**.
+One breath, a drop to the bottom off Tofino, BC, and 30 seconds of air. You lie still on the rocks and wait for the
+fish to come to you, the way spearos hunt from the bottom (*aspetto*). Spear the black rockfish, land the lingcod if
+you can, and leave the surfperch alone. Everything is made by code: no images, no 3D models, no sound files, one HTML file.
 
-![Kelp forest with a stone whale tail and a manta ray](.github/screenshots/whale-fluke.jpg)
+> **Built on [Abyssal Garden](https://github.com/Noniv/abyssal-garden) by Maksymilian Dendura ([@Noniv](https://github.com/Noniv)).**
+> The gorgeous procedural underwater world, its WebGPU renderer and the ambient soundscape are theirs (MIT); this
+> repo started as a fork at commit `a596354`, and their history is kept below ours. Go check out the original.
+
+## The round
+
+1. **Descent.** The view drops from the surface while the card says what to shoot. *Ready? Set… HUNT!*
+2. **Bottom time.** The hunt music starts and the air bar on the right drains. It turns yellow, then red, and the
+   music speeds up. At zero: `SURFACE!`.
+3. **Ascent and tally.** The score counts up, one row per fish with its outline and where the spear went in (lost and
+   wrong fish crossed out), your stats, a verdict on dinner, badges, and the top-10 board (three initials).
+
+**The fish**
+
+| | |
+|---|---|
+| **Black rockfish** (slate-black, mottled grey, spiny dorsal) | The target. They cruise across the view, sometimes in pairs, stop near the bottom and sometimes come in for a look. |
+| **Lingcod** (long, mottled brown, big head) | The trophy, worth double. An ambusher: it sits on the rocks for a moment, then darts to the next spot. Two surfperch tag along. |
+| **Striped surfperch** (copper with blue stripes) | Off limits this round. They hold patches close in and chase any rockfish that passes, right into your line of fire. Spear one and the round ends with a penalty. |
+
+The spear stops in the first fish it meets, so wait for a clean window.
+
+**Where you hit matters** (points grow with the fish's length):
+
+| Zone | What happens | Points |
+|---|---|---|
+| Head | **Stoned**: killed at once, a moment of slow motion | 1.5 × |
+| Body | Usually holds; about 1 in 5 fights free on the way in | 1 × |
+| Tail | Usually tears out | 0.6 × if it holds |
+
+A fish that tears free bolts, bleeding: one more chance. If it leaves the view, `GOT AWAY` costs 100. Fish taken in a
+row pay a streak bonus, and a shot that slips past a surfperch scores "THREADED IT!".
+
+**Scaring them.** Every shot raises the alarm, which dies down if you wait. Fish near the spear's path flinch, then
+burst away across the view. Surfperch are back at their patch in seconds; rockfish come back once things calm down,
+but leave for good after a few scares. The round ends when the air runs out, when nothing is left, or on a surfperch.
+
+Each round is a seeded script: the same seed gives the same fish in the same order (`index.html?seed=1234`).
 
 ## Try it
 
 1. Download [`index.html`](index.html).
 2. Open it in **Chrome** or **Edge** on a desktop computer.
-3. Wait a few seconds while the world is built, then press **Dive in** and start swimming.
+3. Wait a few seconds while the world is built, then press **Start**.
 
-Nothing to install, and it works offline. It needs a browser with **WebGPU**. If you see *"This scene needs WebGPU"*, update your browser or switch to Chrome / Edge.
-
-## What's down there
-
-- **Kelp forests** that sway in the current and sparkle with tiny gold and green specks
-- **Light rays** streaming down from a wavy surface, with shimmering caustics on the sea floor
-- **A sunken wooden ship**, a **giant stone whale tail**, rock arches, canyons and floating boulders
-- **Manta rays**, schools of fish, rising bubbles and drifting particles
-- **A purple grotto** with glowing magenta ground cover, coral and barrel sponges
-- **A soundscape** made up as you listen: a deep rumble, distant whale calls, soft chimes and bubbles
-
-| | |
-|---|---|
-| ![Shipwreck](.github/screenshots/shipwreck.jpg) | ![Looking up through the kelp](.github/screenshots/kelp-forest.jpg) |
-| ![Barrel sponges](.github/screenshots/sponge-garden.jpg) | ![Light rays over the kelp basin](.github/screenshots/light-rays.jpg) |
-
-![The purple grotto](.github/screenshots/purple-grotto.jpg)
+Nothing to install, and it works offline. It needs a browser with **WebGPU** and a mouse.
 
 ## Controls
 
-| | Keyboard & mouse |
+| | |
 |---|---|
-| Look around | Move the mouse |
-| Swim | `W` `A` `S` `D` |
-| Up / down | `E` / `Q` |
-| Swim faster | Hold `Shift` |
-| Jump to a viewpoint | `1` to `6` (the spots in the screenshots) |
-| Menu | `Esc` releases the mouse and opens the menu with the list of controls; **Resume** takes you back |
-| Sound on / off | `M` (sound starts when you dive in) |
+| Aim | Move the mouse: the crosshair moves freely, and the view turns a few degrees near the left and right edges |
+| Fire | Click. The reel brings the spear back by itself, then the gun reloads (about 1 s) |
+| Pause / menu | `Esc` |
+| Sound on / off | `M` |
 | Performance stats | `H` |
-| Detail level | **Low**, **Medium** or **High** in the menu (reloads the page) |
 
-The seabed, cliffs and arches are solid: you glide along the rock instead of swimming into it, and you still fit through every tunnel and arch. Kelp, plants, corals, sponges, loose rocks, the floating boulders, the ship and the whale tail you can swim through.
+Needs a desktop browser with **WebGPU** (Chrome or Edge) and a mouse. Nothing to install: `index.html` is the whole game.
 
-**On a touchscreen:** hold one finger down to swim forward and slide it to steer. Put a second finger down to go faster. The `≡` button in the corner opens the menu. Phones always show the scene in landscape and start on Low or Medium detail. (Touch support is experimental.)
+## Leaderboards
 
-## Detail levels
+No accounts, like an arcade cabinet: make the top 10 and type a name (up to 7 letters or numbers). Each location has
+its own board. The world boards live on a tiny server in [`server/`](server): a Cloudflare Worker with a D1 (SQLite)
+database, well inside Cloudflare's free tier. Until it's deployed, or when it can't be reached, the game keeps a
+top 10 on the device instead.
 
-The **Low**, **Medium** and **High** buttons in the menu pick the detail level; the current one is lit. Each level is the same world, built with less in it:
-
-| Level | What it is | Picked on a first visit for |
-|---|---|---|
-| **High** | The full scene | Computers |
-| **Medium** | Half of the leaves, sparkles and pebbles; small rocks, sponges and corals cast no shadows | Phones with 8 GB of memory |
-| **Low** | A quarter of the leaves, no anti-aliasing, coarser rocks and corals, simpler lighting, 480p to start with | Other phones, and computers with 4 GB of memory or less |
-
-If loading crashes the tab, or the graphics driver gives up, the page starts again one level lower. Your browser remembers the level, and the resolution and draw distance the scene settled on, for the next visit.
-
-## How it works
-
-- The seabed is sculpted on your graphics card every time the page opens, then decorated with about two million kelp leaves and plants, tens of thousands of rocks, and thousands of sponges, corals and fish.
-- Everything is drawn with **WebGPU** directly. No game engine or 3D library is used.
-- The ship, whale tail, mantas, fish and corals are built from simple mathematical shapes.
-- The sound is synthesized live with the Web Audio API.
-- It's built to run smoothly: about 180 fps at 2560×1440 on an RTX 5070 Ti. On slower hardware it aims for 60 fps by lowering first the resolution and then how far away plants and rocks are drawn, in small steps. The scene is already running, blurred, behind the start menu, so most of that tuning is done before you dive in. A low-end phone (Samsung Galaxy A16) reaches about 20 fps at 670×372 on Low.
-
-## Make it your own
-
-The readable source code is in the [`source`](source) folder. To change something and rebuild `index.html` you need [Node.js](https://nodejs.org) 18 or newer:
+Deploy it once:
 
 ```bash
-cd source
-npm install
-npm run build
+cd server && npm install
+npx wrangler login
+npx wrangler d1 create spearo-scores      # paste the database_id it prints into wrangler.toml
+npm run db:init:remote
+npm run deploy                            # prints https://spearo-hero-scores.<you>.workers.dev
 ```
 
-This writes a new `index.html` next to this README. `npm run build:readable` writes an unminified version instead, which is easier to debug in the browser's developer tools.
+Then set `LB_DEFAULT` near the leaderboard section of `source/src/arcade.js` to that URL and rebuild. The server
+checks names and stats, rejects impossible scores and rate-limits each address; it can't make faking a score
+impossible, so treat the board as a fun one.
 
-`npm run build:dev` writes a separate `dev.html` with two extra tools that are not part of `index.html`: `F` flies the camera along a one-minute path through the whole world, and `B` runs that flight as a benchmark and reports frame and GPU times.
+## Locations
+
+Each location is an entry in `LOCATIONS` at the top of `source/src/arcade.js`: a spot in the shared world (the
+diver's position and heading), the words on its dive card, its air, and which species is the target, the trophy and
+the fish to avoid. Species (shape, colours, sizes, speeds, how jumpy) live in `SPEC` in `source/src/fish.js`, with
+their colour pattern in the fish shader in `source/src/game.js`. Tofino is the only location so far; the world also
+has a sunken ship, a whale-tail rock, arches, tunnels and coral and sponge gardens to set future ones in.
+
+## Development
+
+```bash
+cd source && npm install
+npm run build        # ../index.html, minified
+npm run build:dev    # ../dev.html, readable, with the test hooks
+node test/round.mjs 42                              # plays a seeded round in Chrome and checks every step
+LB=http://localhost:8787 node test/round.mjs 42     # the same against a local server (npm run dev in server/)
+```
 
 | File | What's inside |
 |---|---|
-| [`source/src/world.js`](source/src/world.js) | The world layout: rock walls, arches, tunnels, kelp forests, sponge gardens, fish schools, mantas, the ship and the whale tail. **A good place to start.** |
-| [`source/src/shaders.js`](source/src/shaders.js) | The look: water and fog colors, lighting, kelp, rocks, the water surface and light rays (WGSL shader code) |
-| [`source/src/main.js`](source/src/main.js) | The renderer, the camera, the controls, the six viewpoints and the camera path the world is laid out around |
-| [`source/src/audio.js`](source/src/audio.js) | The soundscape |
-| [`source/src/quality.js`](source/src/quality.js) | The detail levels: which one a device starts on, and what is remembered between visits |
-| [`source/src/math.js`](source/src/math.js) | Noise, random numbers and mesh-building helpers |
-| [`source/src/dev.js`](source/src/dev.js) | Development tools (fly-through and benchmark), only in `dev.html` |
-| [`source/template.html`](source/template.html) | The page around the scene: loading bar, start menu, links and their styles |
-
-Some easy first tweaks:
-
-- **Water color:** `WCOL` (blue-green water) and `PCOL` (purple grotto) near the top of the shared scene code in `shaders.js`
-- **Sunlight color:** `SUNC` right next to them
-- **Brightness and light rays:** `EXPO` and `RAYS` in `main.js`
-- **Swimming speed:** search for `26 : 7` in `main.js` (fast speed : normal speed)
+| [`source/src/arcade.js`](source/src/arcade.js) | The round: locations, the seeded script, fish behaviour and scaring, scoring, HUD, effects, tally, leaderboards. **Start here.** |
+| [`source/src/fish.js`](source/src/fish.js) | The species table and fish meshes, the fish pool, rock and floor queries |
+| [`source/src/game.js`](source/src/game.js) | The speargun, spear, line and hit test, and the shader for them and the fish |
+| [`source/src/audio.js`](source/src/audio.js) | Ambient soundscape, game sounds and the hunt music, all synthesized |
+| [`source/src/world.js`](source/src/world.js), [`shaders.js`](source/src/shaders.js), [`main.js`](source/src/main.js) | The world, its look and the renderer (from Abyssal Garden) |
+| [`source/template.html`](source/template.html) | The page: start screen, HUD and tally styles |
+| [`source/src/dev.js`](source/src/dev.js), [`devgame.js`](source/src/devgame.js), [`source/test`](source/test) | Test hooks (only in `dev.html`) and the automated round test |
+| [`server/`](server) | The leaderboard Worker |
 
 ## License
 
-[MIT](LICENSE): free to use, change and share, including in your own projects.
+[MIT](LICENSE). The underwater world, renderer and soundscape are © Maksymilian Dendura (Abyssal Garden), used and
+modified under the MIT license; the license and copyright notice are kept in [LICENSE](LICENSE).
