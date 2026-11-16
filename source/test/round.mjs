@@ -32,6 +32,7 @@ check((await st()).phase === 'descent', 'round starts with the descent');
 await snap('1-descent');
 check(await until('TT.arc.state().phase === "bottom"', 15000), 'reaches the bottom');
 // run 1 tests shots, not the air: keep it topped up (run 2 lets it run out)
+await c.ev('window.__ling = null; setInterval(() => { const f = TT.arc.fish().find((f) => f.s === 1 && f.st !== "off"); if (f && window.__ling == null) window.__ling = f.d; }, 50)');
 await c.ev('window.__air = setInterval(() => { const s = TT.arc.state(); if (s.phase === "bottom" && !s.end) TT.arc.air(30); }, 300); TT.arc.endless(1)');
 await c.sleep(300); await snap('2-bottom');
 
@@ -78,7 +79,8 @@ check(await until('TT.arc.state().gun === "LOADED"', 8000), 'gun reloaded');
 // tail, rigged to tear: the fish tears off wounded, then gets away (or is shot again)
 const before = (await fish()).filter((f) => f.wound).length;
 check(await shoot(-0.33, { hold: false }), 'found a clear tail shot');
-check(await until(`TT.arc.fish().filter((f) => f.wound).length > ${before}`, 5000), 'tail shot tears off: a wounded fish');
+{ const torn = await until(`TT.arc.fish().filter((f) => f.wound).length > ${before}`, 5000), q = await st();
+  check(torn, 'tail shot tears off: a wounded fish' + (torn ? '' : ` (state: ${JSON.stringify({ gun: q.gun, end: q.end, sp: q.spFish, sp2: q.spFish2, rows: q.rows.map((r) => r.outcome + ' ' + r.zone) })})`)); }
 await c.sleep(200); await snap('4-tore-off');
 await c.ev('TT.arc.rig(null)');
 check(await until('TT.arc.state().rows.some((r) => r.outcome === "GOT AWAY")', 15000), 'the wounded fish gets away (its points cut by 100)');
@@ -95,6 +97,30 @@ check(await until('TT.arc.state().back[2] > 0', 10000), 'a startled surfperch we
 if (await until('TT.arc.fish().some((f) => f.s < 2 && f.spooks > 0 && !f.wound)', 8000))
   check(await until('TT.arc.state().back[0] + TT.arc.state().back[1] > 0', 20000), 'a startled rockfish calmed down or came back');
 else log('--   no rockfish was spooked by these shots (only the wounded one): return not checked for this seed');
+
+// a double: two rockfish lined up 20 cm apart, the spear goes through the near one into the far one
+check(await until('TT.arc.state().gun === "LOADED"', 8000), 'gun reloaded for the double');
+{
+  await c.ev('TT.arc.hold(1); TT.arc.mouse(0.5, 0.45)'); await c.sleep(100);
+  const [x, y, z, ax, ay, az] = await c.ev('TT.arc.eye()'), a = await c.ev('TT.arc.spawn(0)'), b = await c.ev(`TT.arc.spawn(0, ${a})`);
+  check(a >= 0 && b >= 0, 'two free rockfish for the double');
+  await c.ev(`TT.arc.put(${a}, ${x + ax * 3}, ${y + ay * 3}, ${z + az * 3}, 0); TT.arc.put(${b}, ${x + ax * 3.22}, ${y + ay * 3.22}, ${z + az * 3.22}, 0)`);
+  await c.sleep(100);
+  const d0 = (await st()).doubles;
+  check(await c.ev(`TT.arc.aim(${a}, 0.3)`) === a, 'the near rockfish is in the line of fire');
+  await c.ev('TT.arc.rig({ hold: true }); TT.arc.fire()');
+  await until('TT.arc.state().stopped > 0', 3000);
+  const s = await st();
+  check(s.spFish === a && s.spFish2 === b && s.doubles === d0 + 1, `both rockfish on one spear: a double (${s.spFish}, ${s.spFish2})`);
+  await c.sleep(300); await snap('4b-double');
+  await c.ev('TT.arc.hold(0)');
+  check(await until('TT.arc.state().gun === "RELOADING" || TT.arc.state().gun === "LOADED"', 8000), 'both reeled in');
+  await c.ev('TT.arc.rig(null)');
+}
+
+// the lingcod's first entrance is out of the kelp ahead
+check(await until('window.__ling != null', 30000), 'the lingcod showed up');
+check(await c.ev('window.__ling') > 9, `it came out of the kelp ahead (first seen ${(await c.ev('window.__ling')).toFixed(1)} m out)`);
 
 // a surfperch ends the round
 check(await until('TT.arc.state().gun === "LOADED"', 8000), 'gun reloaded');

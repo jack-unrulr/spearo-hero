@@ -188,6 +188,8 @@ const pHunt = scenePipe(mod(W_GAME), 'vsHunt', 'fsHunt', [vbSolid, ibSolid]);
 // gun: 0 LOADED, 1 FIRED (in flight, then at rest), 2 REELING, 3 RELOADING
 // stopped: 0 in flight, 1 in the water at the end of the line, 2 in rock, 3 in a fish
 let gst = 0, stopped = 0, spFish = -1, fireReq = 0, rls = 0, limp = 0, stopT = 0;
+// a double: spFish2 is the second fish, at the tip; spFish then sits spGap further up the shaft. limp2: it is stoned
+let spFish2 = -1, spGap = 0, limp2 = 0;
 // scratch: quaternions (slots of 4), vectors (slots of 3), scalars. Helpers take slot numbers, never floats.
 const QQ = new Float64Array(32), V = new Float64Array(48), S = new Float64Array(8);
 const gRTX = 37, gRTY = 38, gRTZ = 39, gYR = 40, gPR = 41, gLEN = 42;
@@ -224,44 +226,70 @@ function fishInst(i, amp) {
 }
 
 // ---------------------------------------------------------------- spear
-// moves the tip S[0] metres along its velocity in short steps; stops in rock or in the first fish it meets
+// the fish whose hit volume holds the point x, y, z (the deepest in, if several), skipping fish `skip`; -1 for none.
+// HF = where along that fish the spear goes in, as a fraction of its length (+ toward the nose)
+let HF = 0;
+function spearScan(x, y, z, dx, dy, dz, skip) {
+  let best = -1, bd = 1e9;
+  for (let i = 0; i < NF; i++) {
+    if (FST[i] !== 0 || i === skip) continue;
+    const o = i * FN, ex = x - FS[o], ey = y - FS[o + 1], ez = z - FS[o + 2], len = FS[o + fLEN], d2 = ex * ex + ey * ey + ez * ez;
+    if (d2 > len * len * 0.36) continue;
+    // the hit volume (fish.js hitIn); t = where along it, from the tail (-) to the nose (+)
+    const q = hitIn(i, ex, ey, ez), t = HT[0];
+    if (q < 1 && q < bd) {
+      const cp = cos(FS[o + fPIT]), fx = cos(FS[o + fYAW]) * cp, fy = sin(FS[o + fPIT]), fz = sin(FS[o + fYAW]) * cp;
+      // where along the body: the spear's line passes closest to the fish's axis there (the skin it touches
+      // first is nearer the middle on a fish that is angled away)
+      bd = q; best = i; const ad = fx * dx + fy * dy + fz * dz, k = 1 - ad * ad;
+      HF = (k > 0.05 ? max(-0.5, min(0.5, ((ex * fx + ey * fy + ez * fz) - (ex * dx + ey * dy + ez * dz) * ad) / k)) : t) / len;
+    }
+  }
+  return best;
+}
+// how far past the first fish the spear can still take a second one (a double)
+const PASS = 0.28;
+// moves the tip S[0] metres along its velocity in short steps; stops in rock or in a fish. A fish it goes through
+// (not a protected one) does not stop it at once: within PASS beyond, a second fish goes on the spear too, the first
+// sliding back up the shaft (spGap); with none there the tip stays in the first.
 function spearMove() {
   const l = sqrt(G[gVX] * G[gVX] + G[gVY] * G[gVY] + G[gVZ] * G[gVZ]); if (l < 1e-6) return;
   const dx = G[gVX] / l, dy = G[gVY] / l, dz = G[gVZ] / l, n = (S[0] / 0.025 | 0) + 1, st = S[0] / n;
+  let h2 = 0;
   for (let k = 0; k < n; k++) {
     const x = G[gPX] += dx * st, y = G[gPY] += dy * st, z = G[gPZ] += dz * st;
     QP[0] = x; QP[1] = y; QP[2] = z; rk(0);
     if (QD[0] > 0) { G[gPX] -= dx * st; G[gPY] -= dy * st; G[gPZ] -= dz * st; stopped = 2; break; }
-    let best = -1, bd = 1e9;
-    for (let i = 0; i < NF; i++) {
-      if (FST[i] !== 0) continue;
-      const o = i * FN, ex = x - FS[o], ey = y - FS[o + 1], ez = z - FS[o + 2], len = FS[o + fLEN], d2 = ex * ex + ey * ey + ez * ez;
-      if (d2 > len * len * 0.36) continue;
-      // the hit volume (fish.js hitIn); t = where along it, from the tail (-) to the nose (+)
-      const q = hitIn(i, ex, ey, ez), t = HT[0];
-      if (q < 1 && q < bd) {
-        const cp = cos(FS[o + fPIT]), fx = cos(FS[o + fYAW]) * cp, fy = sin(FS[o + fPIT]), fz = sin(FS[o + fYAW]) * cp;
-        // where along the body: the spear's line passes closest to the fish's axis there (the skin it touches
-        // first is nearer the middle on a fish that is angled away)
-        bd = q; best = i; const ad = fx * dx + fy * dy + fz * dz, k = 1 - ad * ad;
-        G[gHIT] = (k > 0.05 ? max(-0.5, min(0.5, ((ex * fx + ey * fy + ez * fz) - (ex * dx + ey * dy + ez * dz) * ad) / k)) : t) / len;
-      }
+    const best = spearScan(x, y, z, dx, dy, dz, -1);
+    if (best < 0) continue;
+    FST[best] = 3; spFish = best; stopped = 3; G[gTHR] = 1; G[gTHT] = 0; G[gHIT] = HF;
+    if (FSP[best] === AVOID) break;
+    // look on along the line for a second fish (rock ends the look)
+    for (let s = 0.025; s <= PASS; s += 0.025) {
+      const x2 = x + dx * s, y2 = y + dy * s, z2 = z + dz * s;
+      QP[0] = x2; QP[1] = y2; QP[2] = z2; rk(0); if (QD[0] > 0) break;
+      const b2 = spearScan(x2, y2, z2, dx, dy, dz, best);
+      if (b2 >= 0) { FST[b2] = 3; spFish2 = b2; spGap = s; h2 = HF; G[gPX] = x2; G[gPY] = y2; G[gPZ] = z2; break; }
     }
-    if (best >= 0) { FST[best] = 3; spFish = best; stopped = 3; G[gTHR] = 1; G[gTHT] = 0; break; }
+    break;
   }
   if (stopped) {
     G[gVX] = G[gVY] = G[gVZ] = 0; G[gSPX] = G[gPX]; G[gSPY] = G[gPY]; G[gSPZ] = G[gPZ]; stopT = G[gT];
     if (SFX) SFX(stopped === 3 ? 2 : 1);
-    limp = 0; if (stopped === 3) arcHit(spFish, G[gHIT]);
+    limp = limp2 = 0;
+    if (stopped === 3) { arcHit(spFish, G[gHIT]); if (spFish2 >= 0) arcHit(spFish2, h2, 1); }
     arcStop();
   }
 }
-// the fish tears off the spear (arcade.js has already set it free)
-function spearDrop() { spFish = -1; limp = 0; }
+// fish i tears off the spear (arcade.js has already set it free); a second fish left on moves up to be the first
+function spearDrop(i) {
+  if (i === spFish2) { spFish2 = -1; limp2 = 0; return; }
+  spFish = spFish2; limp = limp2; spFish2 = -1; limp2 = 0; spGap = 0;
+}
 // the spear is back at the gun: hand over the fish, start the reload
 function land() {
-  if (spFish >= 0) { const i = spFish; spFish = -1; arcLanded(i); if (SFX) SFX(7); }
-  gst = 3; stopped = 0; G[gT] = 0; rls = 0; G[gSEAT] = 1; REEL = 0; limp = 0;
+  if (spFish >= 0) { const i = spFish, j = spFish2; spFish = spFish2 = -1; arcLanded(i); if (j >= 0) arcLanded(j); if (SFX) SFX(7); }
+  gst = 3; stopped = 0; G[gT] = 0; rls = 0; G[gSEAT] = 1; REEL = 0; limp = limp2 = 0; spGap = 0;
 }
 
 function gameStep(dt) {
@@ -277,7 +305,7 @@ function gameStep(dt) {
   G[gREC] -= G[gREC] * min(1, dt * 8);
   if (gst === 0 && fireReq) {
     // release: the tip starts at the eye so nothing between the eye and the muzzle is skipped
-    gst = 1; stopped = 0; spFish = -1; G[gT] = 0; G[gREC] = 1; G[gSEAT] = 0; G[gSAG] = 0;
+    gst = 1; stopped = 0; spFish = spFish2 = -1; spGap = 0; G[gT] = 0; G[gREC] = 1; G[gSEAT] = 0; G[gSAG] = 0;
     G[gPX] = G[gOX] = cx + fx * 0.3; G[gPY] = G[gOY] = cy + fy * 0.3; G[gPZ] = G[gOZ] = cz + fz * 0.3; G[gVX] = fx * 34; G[gVY] = fy * 34; G[gVZ] = fz * 34; G[gDX] = fx; G[gDY] = fy; G[gDZ] = fz;
     if (SFX) SFX(0);
     arcFire();
@@ -308,7 +336,7 @@ function gameStep(dt) {
     // the reel takes the line in at its own speed, a little slower with a fish on
     const tx = G[gPX] - G[gRTX], ty = G[gPY] - G[gRTY], tz = G[gPZ] - G[gRTZ], d = sqrt(tx * tx + ty * ty + tz * tz) + 1e-6;
     if (d < G[gLEN]) G[gLEN] = d;
-    G[gLEN] -= 11 / (1 + (spFish >= 0 ? 1.2 * FS[spFish * FN + fLEN] : 0)) * dt;
+    G[gLEN] -= 11 / (1 + (spFish >= 0 ? 1.2 * FS[spFish * FN + fLEN] : 0) + (spFish2 >= 0 ? 1.2 * FS[spFish2 * FN + fLEN] : 0)) * dt;
     if (G[gLEN] < 0.06) land();
     else if (d > G[gLEN]) { const k = G[gLEN] / d; G[gPX] = G[gRTX] + tx * k; G[gPY] = G[gRTY] + ty * k; G[gPZ] = G[gRTZ] + tz * k; }
   } else if (gst === 3) { // reload: slide the spear in, then stretch the two bands one at a time
@@ -325,8 +353,9 @@ function gameStep(dt) {
   }
   if (gst !== 2) REEL = 0;
   if (spFish >= 0) { // the fish on the spear thrashes, and tires; a stoned fish hangs limp
-    G[gTHR] = limp ? 0 : max(0.3, G[gTHR] - dt * 0.15);
-    if (!limp && (G[gTHT] -= dt) <= 0) { rn(); G[gTHT] = 0.3 + G[gRND] * 0.5; if (SFX) SFX(6); }
+    const still = limp && (spFish2 < 0 || limp2);
+    G[gTHR] = still ? 0 : max(0.3, G[gTHR] - dt * 0.15);
+    if (!still && (G[gTHT] -= dt) <= 0) { rn(); G[gTHT] = 0.3 + G[gRND] * 0.5; if (SFX) SFX(6); }
   }
 }
 
@@ -383,14 +412,16 @@ function gameDraw(r) {
     const w = gst === 2 ? b * b : 0; let ax = G[gDX] * (1 - w) + V[9] * w, ay = G[gDY] * (1 - w) + V[10] * w, az = G[gDZ] * (1 - w) + V[11] * w; const l = sqrt(ax * ax + ay * ay + az * az);
     V[15] = ax / l; V[16] = ay / l; V[17] = az / l; qd(5, 5);
     ins(iSPEAR, 2, 5); IB[k + 11] = 0.5;
-    if (spFish >= 0) { // the speared fish: across the shaft where it was hit, thrashing (or limp)
-      const thr = G[gTHR], f = spFish * 12, o = spFish * FN, at = 0.14;
-      S[0] = 1.45 + sin(t * 23) * 0.5 * thr; qa(6, 1); qm(5, 6, 7); S[0] = sin(t * 17) * 0.5 * thr; qa(6, 0); qm(7, 6, 4);
+    // the speared fish: across the shaft where it was hit, thrashing (or limp); a double's first fish further up
+    for (let n = 0; n < 2; n++) {
+      const i = n ? spFish2 : spFish; if (i < 0) continue;
+      const lp = n ? limp2 : limp, thr = lp ? 0 : max(0.3, G[gTHR]), f = i * 12, o = i * FN, at = 0.14 + (n ? 0 : spGap), w = n ? 1.7 : 0;
+      S[0] = 1.45 + sin(t * 23 + w) * 0.5 * thr; qa(6, 1); qm(5, 6, 7); S[0] = sin(t * 17 + w) * 0.5 * thr; qa(6, 0); qm(7, 6, 4);
       // the fish's body point that was hit sits on the shaft: shift it along its own axis by the hit position
       V[42] = -FS[o + fTX] * FS[o + fLEN]; V[43] = V[44] = 0; qv(4, 14);
       IB[f] = V[6] - V[15] * at + V[42]; IB[f + 1] = V[7] - V[16] * at + V[43]; IB[f + 2] = V[8] - V[17] * at + V[44]; IB[f + 3] = FS[o + fLEN];
       IB[f + 4] = QQ[16]; IB[f + 5] = QQ[17]; IB[f + 6] = QQ[18]; IB[f + 7] = QQ[19];
-      IB[f + 9] = FS[o + fPH] += dt * (8 + 34 * thr); IB[f + 10] = limp ? 0.005 : 0.04 + 0.2 * thr;
+      IB[f + 9] = FS[o + fPH] += dt * (8 + 34 * thr); IB[f + 10] = lp ? 0.005 : 0.04 + 0.2 * thr;
       FS[o] = IB[f]; FS[o + 1] = IB[f + 1]; FS[o + 2] = IB[f + 2];
     }
     // line: muzzle to the spear's tail, sagging with its slack

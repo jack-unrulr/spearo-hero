@@ -9,7 +9,7 @@
   stepFish = (f, dt) => step0(f, hold ? 0 : dt);
   const onScreen = (i) => { const o = i * FN; return project(FS[o], FS[o + 1], FS[o + 2]) && PJ[0] > 0 && PJ[1] > 0 && PJ[0] < fx.clientWidth && PJ[1] < fx.clientHeight; };
   TT.arc = {
-    state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden }),
+    state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, spFish2, doubles: RD.st.doubles, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden }),
     fish: () => FI.map((f) => ({ i: f.i, s: f.s, st: STN[f.st], x: f.x, d: f.d, h: f.h, wound: f.wound, spooks: f.spooks, vis: FST[f.i] === 0 && !!onScreen(f.i) })),
     go: (seed) => { ui(false); startRound(seed); return RD.seed; },
     speed: (k) => { RD.speed = k; },
@@ -47,6 +47,12 @@
     },
     fire: () => { if (!gst && RD.phase === 'bottom' && !RD.end) { fireReq = 1; return true; } return false; },
     mouse: (x, y) => { RD.mx = x; RD.my = y; },
+    // a fish of species s brought in (calm, no path), or -1 if none is free; put() moves it to a world point
+    spawn: (s, skip = -1) => { // a free one if there is one, else any of that species (not `skip`) not on the spear or wounded
+      let f = fishOf(s); if (f && f.i === skip) f = null; for (let i = F0[s]; !f && i < F0[s + 1]; i++) if (i !== skip && FST[i] !== 3 && !FI[i].wound && FI[i].st !== SPEARED && FI[i].st !== LANDED) f = FI[i];
+      if (!f) return -1; spawn(f); f.st = CALM; f.path = [[0, 0, 0, 99, 0]]; f.wp = 0; f.pause = 99; return f.i; },
+    put: (i, wx, wy, wz, a) => { const f = FI[i], px = wx - SPOT.x, pz = wz - SPOT.z; f.x = px * sR[0] + pz * sR[1]; f.d = px * sF[0] + pz * sF[1]; f.h = wy - SPOT_Y; f.a = a; },
+    eye: () => [F[CX], F[CY], F[CZ], G[gAX], G[gAY], G[gAZ]],
     screen: (i) => { const o = i * FN; return project(FS[o], FS[o + 1], FS[o + 2]) ? [PJ[0], PJ[1], PJ[2]] : null; },
   };
   // hit boxes: B (or ?boxes in the URL, or TT.arc.boxes(1)) draws each live fish's hit volume exactly as spearMove()

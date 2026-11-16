@@ -17,6 +17,9 @@ export async function launch({ width = 1280, height = 720, headless = true, port
   if (process.env.JSFLAGS) args.push('--js-flags=' + process.env.JSFLAGS, '--no-sandbox', '--enable-logging=stderr');
   args.push('about:blank');
   const proc = spawn(CHROME, args, { stdio: process.env.JSFLAGS ? ['ignore', 'inherit', 'inherit'] : 'ignore' });
+  // never leave a browser behind, even when a test throws or is interrupted
+  process.on('exit', () => { try { proc.kill('SIGKILL'); } catch {} });
+  for (const sig of ['SIGINT', 'SIGTERM']) process.once(sig, () => process.exit(130));
   let target;
   for (let i = 0; i < 100 && !target; i++) {
     await sleep(100);

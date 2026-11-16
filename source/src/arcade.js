@@ -58,7 +58,7 @@ function makeScript(seed) {
     if (rng() < 0.35) S.push({ t: t + R2(0.6, 1.4), s: H, side: S[S.length - 1].side }); // a pair
   }
   const tt = R2(12, 20), ts = rng() < 0.5 ? -1 : 1;
-  S.push({ t: tt, s: T, side: ts }, { t: tt + 0.3, s: A, escort: 1 }, { t: tt + 0.7, s: A, escort: 1 }); // the trophy brings company
+  S.push({ t: tt, s: T, side: ts, kelp: 1 }, { t: tt + 0.3, s: A, escort: 1 }, { t: tt + 0.7, s: A, escort: 1 }); // the trophy brings company
   S.sort((a, b) => a.t - b.t);
   return S;
 }
@@ -74,10 +74,12 @@ function spawn(f, len) {
 }
 const lane = () => R2(3, 5);
 // a path across the view from `side`: in from off-screen, two stops, out the other side
-function pathAcross(f, side, d0) {
+function pathAcross(f, side, d0, kelp) {
   const d = d0 || lane(), hw = halfW(d), y = (x, d) => floorH(x, d) + R2(0.35, 1.3);
   const p = [], x1 = side * R2(0.25, 0.7) * hw, d1 = clamp(d + R2(-0.7, 0.7), 2.8, 5.4), x2 = -side * R2(0, 0.55) * hw, d2 = clamp(d + R2(-0.7, 0.7), 2.8, 5.4);
   if (SPEC[f.s].amb) { // an ambusher (the lingcod): it sits on the bottom a moment, then darts to the next spot, back and forth
+    // out of the kelp ahead: a first stop on the way in, at an angle so it doesn't sit nose-on to the diver
+    if (kelp) { const x = -side * R2(0.25, 0.45) * halfW(6.5), dd = R2(6, 7); p.push([x, dd, floorH(x, dd) + 0.1, R2(0.9, 1.5), 0]); }
     for (let k = 0; k < 4; k++) { const x = (k & 1 ? -side : side) * R2(0.15, 0.75) * hw, dd = clamp(d + R2(-1, 1), 2.8, 5.6); p.push([x, dd, floorH(x, dd) + 0.1, R2(0.7, 1.4), 0]); }
     const xe = (side) * -(halfW(d) + 2.5); p.push([xe, d, y(xe, d) + 0.3, 0, 0]); f.path = p; f.wp = 0; f.side = side; return;
   }
@@ -86,10 +88,12 @@ function pathAcross(f, side, d0) {
   const xe = -side * (halfW(d2) + 2.5); p.push([xe, d2 + R2(-0.5, 1), y(xe, d2) + 0.3, 0, 0]);
   f.path = p; f.wp = 0; f.side = side;
 }
-function enter(f, side) {
+function enter(f, side, kelp) {
   const d = lane(), x = side * (halfW(d) + 1.5);
   f.x = x; f.d = d; f.h = floorH(x, d) + R2(0.5, 1.4); f.a = side > 0 ? PI : 0; f.st = CALM;
-  pathAcross(f, side, d);
+  // kelp: from the kelp forest straight ahead, swimming toward the diver (the lingcod's first entrance)
+  if (kelp) { f.d = 11; f.x = side * R2(0.1, 0.3) * halfW(11); f.h = floorH(f.x, f.d) + 0.4; f.a = -PI / 2 - side * 0.35; }
+  pathAcross(f, side, d, kelp);
 }
 function placeGaribaldi(f, late) {
   // a territory between the diver and the sheephead lanes, inside the view
@@ -151,7 +155,7 @@ function stepFish(f, dt) {
     if (f.tm <= 0) { f.st = FLEE; f.tm = gar ? R2(0.5, 0.9) : f.wound ? R2(2.5, 3.5) : R2(1.6, 2.6); f.zz = R2(0.35, 0.6); f.ts = fleeHeading(f); f.a = f.ts + (rng() - 0.5) * 0.3; f.spd = sp.f * (f.wound ? 0.75 : 1); }
     want = f.a; spd = f.spd; turn = 0;
   } else if (f.st === FLEE) { // burst and coast, zig-zagging across the view
-    f.tm -= dt; f.zz -= dt; turn = 9;
+    f.tm -= dt; f.zz -= dt; turn = sp.amb ? 4 : 9;
     if (f.zz <= 0) { f.zz = R2(0.45, 0.75); f.spd = sp.f * R2(0.7, 1) * (f.wound ? 0.75 : 1); f.ts = fleeHeading(f); f.ts += (rng() < 0.5 ? -1 : 1) * R2(0.3, 0.6); }
     if (leaves(f)) f.ts = atan2(R2(-0.1, 0.2), f.side);
     want = f.ts; spd = sp.v * 1.5 + (f.spd - sp.v * 1.5) * exp(-dt * 2.5); f.spd = spd;
@@ -185,7 +189,7 @@ function stepFish(f, dt) {
     f.tx = p[0]; f.td = p[1]; f.th = p[2];
     const dx = f.tx - f.x, dd = f.td - f.d, dist = hypot(dx, dd);
     want = atan2(dd, dx); spd = sp.v * (1 + RD.alarm);
-    if (sp.amb) { spd = sp.f * 0.5; turn = 5; } // the dart
+    if (sp.amb) { spd = sp.f * 0.42; turn = 2.6; } // the dart: brisk but smooth
     if (f.pause > 0) { f.pause -= dt; spd = 0.06; f.th = floorH(f.x, f.d) + (sp.amb ? 0.05 : 0.3) + FS[o + fRAD]; if (f.pause <= 0) f.wp++; }
     else if (dist < (sp.amb ? 0.9 : 0.4)) {
       if (f.wp >= f.path.length - 1) { f.st = GONE; FST[f.i] = 4; fishInst(f.i, 0); return; }
@@ -195,7 +199,7 @@ function stepFish(f, dt) {
   }
   // turn toward `want`, ease the speed, move in the local frame
   if (turn > 0) { let da = want - f.a; da -= TAU * round(da / TAU); f.a += clamp(da, -turn * dt, turn * dt); }
-  if (f.st !== FLEE && f.st !== STARTLED) f.spd += (spd - f.spd) * min(1, dt * 2);
+  if (f.st !== FLEE && f.st !== STARTLED) f.spd += (spd - f.spd) * min(1, dt * (sp.amb ? 1.3 : 2));
   if (f.st === CURIOUS || gar || f.st === CALM) f.vh = clamp((f.th - f.h) * 1.2, -0.4, 0.4); else f.vh *= exp(-dt * 3);
   f.x += cos(f.a) * f.spd * dt; f.d += sin(f.a) * f.spd * dt; f.h += f.vh * dt;
   if (f.d < 1.5) { f.d = 1.5; if (sin(f.a) < 0) f.a = -f.a; }
@@ -250,7 +254,7 @@ function arcStop() {
   }
   startleAlong(G[gOX], G[gOY], G[gOZ], G[gSPX], G[gSPY], G[gSPZ], 0, spFish >= 0 ? FI[spFish] : null);
 }
-function arcHit(i, frac) {
+function arcHit(i, frac, second) { // second: the far fish of a double
   const f = FI[i], o = i * FN, zone = ZONE(frac); f.st = SPEARED; f.hit = { zone, frac }; FS[o + fTX] = frac; RD.st.hits++;
   blood(G[gPX], G[gPY], G[gPZ], 0.09);
   // the thrashing fish scares the ones around it
@@ -259,6 +263,11 @@ function arcHit(i, frac) {
     addScore(-500); row(f, 'WRONG FISH', -500); callout(FS[o], FS[o + 1], FS[o + 2], '−500', '#ff5a4a');
     stamp('WRONG FISH!', 'bad'); endRound('protected'); if (SFX) SFX(11);
     return;
+  }
+  // a double: two fish on one spear
+  if (second) {
+    RD.st.doubles++; addScore(500); RD.st.bonus += 500;
+    setTimeout(() => { callout(FS[o], FS[o + 1] + 0.45, FS[o + 2], pick(['DOUBLE!  +500', 'SHISH KEBAB!  +500', 'TWO FOR ONE!  +500']), '#ff9cf0', 1.4); if (SFX) SFX(15); }, 350);
   }
   // threaded it: the spear went past a garibaldi with only a hand's width to spare
   const ax = G[gOX], ay = G[gOY], az = G[gOZ], ex = G[gPX] - ax, ey = G[gPY] - ay, ez = G[gPZ] - az, L = ex * ex + ey * ey + ez * ez + 1e-9;
@@ -275,7 +284,7 @@ function arcHit(i, frac) {
   else if (cm(f) >= 54) callout(FS[o], FS[o + 1] + 0.5, FS[o + 2], pick(['BIG ONE!', 'HOG!', 'MONSTER!']), '#fff27a', 1.2);
   const rig = RD.rig, hold = rig && rig.hold !== undefined ? rig.hold : rng() < (zone === 'body' ? 0.8 : zone === 'tail' ? 0.25 : 1);
   if (zone === 'head') {
-    limp = 1; const p = round(basePts(f) * 1.5 / 10) * 10; f.pts = p; addScore(p); row(f, 'STONED', p);
+    if (second) limp2 = 1; else limp = 1; const p = round(basePts(f) * 1.5 / 10) * 10; f.pts = p; addScore(p); row(f, 'STONED', p);
     callout(FS[o], FS[o + 1], FS[o + 2], `STONED!  +${p}`, '#fff27a', 1.3); RD.slow = 0.75;
     RD.st.stoned++; took(f, FS[o], FS[o + 1], FS[o + 2]); if (SFX) SFX(8);
   } else {
@@ -292,9 +301,13 @@ function arcLanded(i) {
 // on the reel a badly hit fish can tear free
 function checkTear(dt) {
   if (spFish < 0 || gst !== 2) return;
-  const f = FI[spFish]; if (f.tear < 0) return;
+  if (spFish2 >= 0) tearOne(FI[spFish2], dt); // a double: either fish can tear free (the far one first)
+  if (spFish >= 0) tearOne(FI[spFish], dt);
+}
+function tearOne(f, dt) {
+  if (f.tear < 0) return;
   if ((f.tear -= dt) > 0) return;
-  const o = f.i * FN; spearDrop(); f.tear = -1;
+  const o = f.i * FN; spearDrop(f.i); f.tear = -1;
   f.st = STARTLED; f.tm = 0.05; f.wound = 1; f.spooks = 99; f.side = rng() < 0.5 ? -1 : 1; FST[f.i] = 0;
   // back into the local frame from where it hangs on the line
   const px = FS[o] - SPOT.x, pz = FS[o + 2] - SPOT.z; f.x = px * sR[0] + pz * sR[1]; f.d = max(1.8, px * sF[0] + pz * sF[1]); f.h = FS[o + 1] - SPOT_Y;
@@ -396,13 +409,13 @@ function buildPicker() {
 }
 function newRound(seed) {
   RD.seed = seed; RD.script = makeScript(seed); RD.next = 0; RD.t = 0; RD.air = AIR; RD.score = 0; RD.rows = []; RD.alarm = 0; RD.end = ''; RD.endT = 0; RD.slow = 0; RD.shots = 0; RD.stamp = ''; RD.curious = 0; RD.back = [0, 0, 0]; RD.lowAir = 0; RD.beat = 0;
-  RD.st = { shots: 0, hits: 0, stoned: 0, landed: 0, lost: 0, biggest: 0, streak: 0, best: 0, bonus: 0, threads: 0, trophy: 0 };
+  RD.st = { shots: 0, hits: 0, stoned: 0, landed: 0, lost: 0, doubles: 0, biggest: 0, streak: 0, best: 0, bonus: 0, threads: 0, trophy: 0 };
   rng = mulberry(seed * 31337 + 7);
   for (const f of FI) { f.st = OFF; FST[f.i] = 4; fishInst(f.i, 0); }
   bubbles.length = clouds.length = calls.length = sparks.length = 0;
   HUD.sc.textContent = 0; HUD.tally.className = ''; body.classList.remove('tal');
   // the reel and gun start clean
-  gst = 0; stopped = 0; spFish = -1; fireReq = 0; limp = 0; G[gB1] = G[gB2] = 1; G[gSEAT] = 0; G[gPOSE] = 0; REEL = 0;
+  gst = 0; stopped = 0; spFish = spFish2 = -1; spGap = 0; fireReq = 0; limp = limp2 = 0; G[gB1] = G[gB2] = 1; G[gSEAT] = 0; G[gPOSE] = 0; REEL = 0;
   // garibaldi are already home when you arrive
   for (const e of RD.script) if (e.t === 0) { const f = fishOf(e.s); if (f) { spawn(f); placeGaribaldi(f, 0); } }
   while (RD.next < RD.script.length && RD.script[RD.next].t === 0) RD.next++;
@@ -482,7 +495,7 @@ function arcStep(dtr) {
       while (RD.next < RD.script.length && RD.script[RD.next].t <= RD.t) {
         const e = RD.script[RD.next];
         if (!isA(e.s) && RD.alarm > 0.6) { e.t += 1; break; }
-        const f = fishOf(e.s); if (f) { spawn(f); if (isA(e.s)) { placeGaribaldi(f, 1); if (e.escort) escort(f); } else enter(f, e.side); }
+        const f = fishOf(e.s); if (f) { spawn(f); if (isA(e.s)) { placeGaribaldi(f, 1); if (e.escort) escort(f); } else enter(f, e.side, e.kelp); }
         RD.next++;
       }
       // the scene is empty: nothing left to come and no sheephead around
@@ -673,7 +686,7 @@ function showStats() {
   $('verdict').textContent = verdict();
   const aw = [];
   if (S.stoned >= 2) aw.push('Headhunter'); if (S.shots >= 3 && acc === 100) aw.push('Dead eye'); if (S.trophy) aw.push('Trophy hunter');
-  if (S.threads) aw.push('Threaded the needle'); if (S.best >= 3) aw.push('On fire'); if (RD.end === 'protected') aw.push('Perch puncher');
+  if (S.threads) aw.push('Threaded the needle'); if (S.doubles) aw.push('Shish kebab'); if (S.best >= 3) aw.push('On fire'); if (RD.end === 'protected') aw.push('Perch puncher');
   $('awards').innerHTML = aw.map((a) => `<b>${a}</b>`).join('');
   if (SFX) SFX(RD.score > 0 && RD.end !== 'protected' ? 17 : 12);
 }
