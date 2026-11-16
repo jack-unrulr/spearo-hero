@@ -4,7 +4,7 @@
 
 One breath, a drop to the bottom off Tofino, BC, and 30 seconds of air. You lie still on the rocks and wait for the
 fish to come to you, the way spearos hunt from the bottom (*aspetto*). Spear the black rockfish, land the lingcod if
-you can, and leave the surfperch alone. Everything is made by code: no images, no 3D models, no sound files, one HTML file.
+you can, and leave the surfperch alone. Everything is made by code: no images, no 3D models, no sound files (except the announcer's voice clips, built into the page), one HTML file.
 
 > **Built on [Abyssal Garden](https://github.com/Noniv/abyssal-garden) by Maksymilian Dendura ([@Noniv](https://github.com/Noniv)).**
 > The gorgeous procedural underwater world, its WebGPU renderer and the ambient soundscape are theirs (MIT); this
@@ -12,7 +12,7 @@ you can, and leave the surfperch alone. Everything is made by code: no images, n
 
 ## The trip
 
-Press **Start**, pick a trip, type Player 1's name, then pick a dive. A trip is three dive sites in one location
+Insert a coin (click the coin door, or press Enter), press **Start**, pick a trip, type Player 1's name, then pick a dive. A trip is three dive sites in one location
 (Tofino: Kelp Forest, Whale Tail, Coral Grotto), each dived once, in any order. One of them, picked at random, has the
 trophy lingcod: `TROPHY FISH!` flashes when it shows up, and the trophy slot on the dive picker fills with it if you
 land it (or says *Missed*). After the third dive the trip's results add everything up, and the total goes on the board.
@@ -54,11 +54,40 @@ but leave for good after a few scares. The round ends when the air runs out, whe
 Each dive is a seeded script, and a trip's seed sets its dives' seeds and which one has the trophy: the same seed
 gives the same trip (`index.html?seed=1234`).
 
+## The announcer
+
+A loud, hammy cowboy announcer calls the big moments: the title (as Start appears once the coin is in: the coin's
+click is also what lets the page make sound), the trophy showing up, landing it or losing it, the
+wrong fish, a hog, a double, three misses in a row, low air and the dinner verdict. He's kept sparing on purpose: most
+lines have odds (a hog: always the first one in a dive, 75% after), some play once per dive or trip, he never repeats
+the same take twice in a row, and after a line there are 1.5 s of quiet that only the trophy, the wrong fish and a new
+high score can break. The hunt music ducks while he talks. **Options > Voice** turns him off (M mutes him with
+everything else).
+
+The script and those rules live in `source/voice/lines.json`; each line's clip is `source/voice/<event>-<n>.mp3`, and
+a line without one is spoken by the browser's own voice as a stand-in. The clips are made with ElevenLabs (Eleven v4, from a
+voice designed for the game, "D1"; a paid plan: the API needs one for designed voices) and picked by ear on a local audition page, then run through an arcade
+"arena" chain (`source/voice/fx.mjs`, needs ffmpeg: EQ, hard compression, a little grit, a short slapback, all at the
+same loudness). The key goes in `source/voice/.elevenlabs-key` (kept out of git); the auditions in
+`source/voice/audition/` (also kept out).
+
+```bash
+cd source
+node voice/audition.mjs voices            # design candidate voices; pick favourites on audition/voices.html
+node voice/audition.mjs shootout D1 A1    # save them; each reads the same lines 3 times (audition/shootout.html)
+node voice/audition.mjs takes D1 4        # 4 takes of every line in the winner; pick on audition/index.html
+node voice/audition.mjs apply 'wrong-1: t3, hog-1: t2, …'   # the picks become the game's clips
+npm run build                             # puts them into the page
+```
+
+Serve `source/voice/audition/` to listen (e.g. `python3 -m http.server -d voice/audition`). `takes` keeps the takes it
+already has, so after changing a line delete its takes in `audition/takes/` and run it again.
+
 ## Try it
 
 1. Download [`index.html`](index.html).
 2. Open it in **Chrome** or **Edge** on a desktop computer.
-3. Wait a few seconds while the world is built, then press **Start**.
+3. Wait a few seconds while the world is built, insert a coin, then press **Start**.
 
 Nothing to install, and it works offline. It needs a browser with **WebGPU** and a mouse.
 

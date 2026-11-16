@@ -9,6 +9,7 @@
   stepFish = (f, dt) => step0(f, hold ? 0 : dt);
   const onScreen = (i) => { const o = i * FN; return project(FS[o], FS[o + 1], FS[o + 2]) && PJ[0] > 0 && PJ[1] > 0 && PJ[0] < fx.clientWidth && PJ[1] < fx.clientHeight; };
   TT.arc = {
+    voice: () => VO.log.slice(), // the announcer's takes so far (voice.js), each a clip when it has one
     state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, spFish2, doubles: RD.st.doubles, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden, scr: $('m').dataset.s, trophyIn: RD.script.some((e) => isT(e.s)), mode: tallyMode, again: $('again').textContent }),
     fish: () => FI.map((f) => ({ i: f.i, s: f.s, st: STN[f.st], x: f.x, d: f.d, h: f.h, wound: f.wound, spooks: f.spooks, vis: FST[f.i] === 0 && !!onScreen(f.i) })),
     // a trip under `name` with the trophy on its first site, and that site's dive started with exactly `seed`

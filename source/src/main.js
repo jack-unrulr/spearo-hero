@@ -550,9 +550,10 @@ let menu = true;
 const bDive = $('d');
 const ui = (m) => {
   if (dead) return;
+  if (m && !menu) vStop(); // paused: the announcer stops mid-line (voice.js)
   menu = m; body.className = m ? 'm' : 'g';
   // focus the dive button so Enter works (delayed: it can't take focus while still hidden)
-  if (m) { fitMenu(); if ($('m').dataset.s === 'home') setTimeout(() => menu && $('m').dataset.s === 'home' && bDive.focus(), 100); } else document.activeElement.blur();
+  if (m) { fitMenu(); if ($('m').dataset.s === 'home') setTimeout(() => menu && $('m').dataset.s === 'home' && (coined ? bDive : $('cb')).focus(), 100); } else document.activeElement.blur();
 };
 // the start page shrinks to fit short windows: everything in it is sized in em, so scale its font until the screen that
 // is up (home: from the logo's starburst to the buttons) clears the hi-score line and the bottom (a few passes: the logo
@@ -572,6 +573,21 @@ const go = () => {
   sound(); if (arcGo()) { ui(false); bDive.textContent = 'Resume'; } // a new trip asks for the name first (arcade.js)
 };
 bDive.onclick = go; $('o').onclick = () => ui(true);
+// the coin door, once a visit (template.html): the click that puts the coin in is also what lets the page make sound.
+// The coin goes in, the door clunks, the credit comes up, the door goes and Start pops in as the announcer says the name.
+let coined = false;
+addEventListener('keydown', (e) => { // Enter or Space puts the coin in, wherever the focus is
+  if (!coined && menu && $('m').dataset.s === 'home' && $('opt').hidden && (e.code === 'Enter' || e.code === 'Space') && document.activeElement !== $('cb')) { e.preventDefault(); $('cb').click(); }
+});
+$('cb').onclick = () => {
+  if ($('cd').className) return;
+  const cd = $('cd'), T = (ms, f) => setTimeout(f, ms);
+  sound(); cd.className = 'in'; if (SFX) SFX(26);
+  T(1060, () => { if (SFX) SFX(27); });
+  T(1480, () => { cd.classList.add('cred'); cd.querySelector('.cr').textContent = 'CREDIT 1'; if (SFX) SFX(28); });
+  T(2050, () => cd.classList.add('out'));
+  T(2350, () => { coined = true; $('g').classList.remove('coin'); bDive.classList.add('pop'); if (menu) bDive.focus(); fitMenu(); voice('title'); });
+};
 // options (top right of the start page): detail level and the controls
 $('ob').onclick = () => { $('opt').hidden = false; setTimeout(() => $('optx').focus(), 50); };
 $('optx').onclick = () => { $('opt').hidden = true; $('ob').focus(); };

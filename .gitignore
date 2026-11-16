@@ -2,3 +2,5 @@ node_modules/
 dev.html
 .DS_Store
 .wrangler/
+.elevenlabs-key
+audition/

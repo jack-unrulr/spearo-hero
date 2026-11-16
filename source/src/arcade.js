@@ -242,6 +242,7 @@ const pick = (a) => a[rng() * a.length | 0];
 function took(f, x, y, z) {
   const S = RD.st; S.landed++; S.biggest = max(S.biggest, inch(f)); if (isT(f.s)) S.trophy = 1;
   S.streak++; S.best = max(S.best, S.streak);
+  if (isT(f.s)) voice('trophyLanded'); else if (S.streak === 3) voice('streak', 0.5);
   if (S.streak > 1) {
     const b = 100 * (S.streak - 1); S.bonus += b; addScore(b);
     setTimeout(() => { callout(x, y + 0.2, z, `${S.streak} IN A ROW!  +${b}`, '#ff9cf0', 1.1); if (SFX) SFX(15); }, 450);
@@ -257,6 +258,7 @@ function arcFire() {
 function arcStop() {
   if (stopped !== 3) {
     RD.alarm = min(1, RD.alarm + 0.15); resetStreak();
+    if (++RD.vMiss === 3) voice('misses', 0.3); else if (stopped === 2) voice('rock', 0.3); // the announcer: three misses running, or the rocks
     callout(G[gSPX], G[gSPY], G[gSPZ], stopped === 2 ? pick(['CLANG!', 'ROCK SHOT', 'PING!']) : pick(['MISS!', 'WHIFF!', 'NOPE!', 'SPLOOSH']), '#b9d4dc', 0.9);
     if (SFX) SFX(18);
   }
@@ -264,18 +266,18 @@ function arcStop() {
 }
 function arcHit(i, frac, second) { // second: the far fish of a double
   const f = FI[i], o = i * FN, zone = ZONE(frac); f.st = SPEARED; f.hit = { zone, frac }; FS[o + fTX] = frac; RD.st.hits++; if (!second) RD.st.hitShots++; // hits counts fish; hitShots counts shots that hit (a double is one)
-  blood(G[gPX], G[gPY], G[gPZ], 0.09);
+  blood(G[gPX], G[gPY], G[gPZ], 0.09); RD.vMiss = 0;
   // the thrashing fish scares the ones around it
   startleAlong(FS[o], FS[o + 1], FS[o + 2], FS[o], FS[o + 1], FS[o + 2], 0.6, f);
   if (isA(f.s)) {
     addScore(-500); row(f, 'WRONG FISH', -500); callout(FS[o], FS[o + 1], FS[o + 2], '−500', '#ff5a4a');
-    stamp('WRONG FISH!', 'bad'); endRound('protected'); if (SFX) SFX(11);
+    stamp('WRONG FISH!', 'bad'); endRound('protected'); if (SFX) SFX(11); voice('wrong', 0.3);
     return;
   }
   // a double: two fish on one spear
   if (second) {
     RD.st.doubles++; addScore(500); RD.st.bonus += 500;
-    setTimeout(() => { callout(FS[o], FS[o + 1] + 0.45, FS[o + 2], pick(['DOUBLE!  +500', 'SHISH KEBAB!  +500', 'TWO FOR ONE!  +500']), '#ff9cf0', 1.4); if (SFX) SFX(15); }, 350);
+    setTimeout(() => { callout(FS[o], FS[o + 1] + 0.45, FS[o + 2], pick(['DOUBLE!  +500', 'SHISH KEBAB!  +500', 'TWO FOR ONE!  +500']), '#ff9cf0', 1.4); if (SFX) SFX(15); voice('double'); }, 350);
   }
   // threaded it: the spear went past a garibaldi with only a hand's width to spare
   const ax = G[gOX], ay = G[gOY], az = G[gOZ], ex = G[gPX] - ax, ey = G[gPY] - ay, ez = G[gPZ] - az, L = ex * ex + ey * ey + ez * ez + 1e-9;
@@ -289,12 +291,12 @@ function arcHit(i, frac, second) { // second: the far fish of a double
     }
   }
   if (isT(f.s)) callout(FS[o], FS[o + 1] + 0.5, FS[o + 2], 'TROPHY!', '#fff27a', 1.5);
-  else if (cm(f) >= 54) callout(FS[o], FS[o + 1] + 0.5, FS[o + 2], pick(['BIG ONE!', 'HOG!', 'MONSTER!']), '#fff27a', 1.2);
+  else if (cm(f) >= 54) callout(FS[o], FS[o + 1] + 0.5, FS[o + 2], pick(['BIG ONE!', 'HOG!', 'MONSTER!']), '#fff27a', 1.2), voice('hog', 0.2);
   const rig = RD.rig, hold = rig && rig.hold !== undefined ? rig.hold : rng() < (zone === 'body' ? 0.8 : zone === 'tail' ? 0.25 : 1);
   if (zone === 'head') {
     if (second) limp2 = 1; else limp = 1; const p = round(basePts(f) * 1.5 / 10) * 10; f.pts = p; addScore(p); row(f, 'STONED', p);
     callout(FS[o], FS[o + 1], FS[o + 2], `STONED!  +${p}`, '#fff27a', 1.3); RD.slow = 0.75;
-    RD.st.stoned++; took(f, FS[o], FS[o + 1], FS[o + 2]); if (SFX) SFX(8);
+    RD.st.stoned++; if (!isT(f.s)) voice('stoned', 0.3); took(f, FS[o], FS[o + 1], FS[o + 2]); if (SFX) SFX(8);
   } else {
     f.pts = zone === 'body' ? basePts(f) : round(basePts(f) * 0.6 / 10) * 10;
     f.tear = hold ? -1 : R2(0.06, 0.18); // s into the reel: early, the fish is close in a moment
@@ -320,7 +322,7 @@ function tearOne(f, dt) {
   // back into the local frame from where it hangs on the line
   const px = FS[o] - SPOT.x, pz = FS[o + 2] - SPOT.z; f.x = px * sR[0] + pz * sR[1]; f.d = max(1.8, px * sF[0] + pz * sF[1]); f.h = FS[o + 1] - SPOT_Y;
   callout(FS[o], FS[o + 1], FS[o + 2], pick(['TORE OFF!', 'IT BROKE OFF!', 'PULLED FREE!']), '#ffb35c', 1.15); blood(FS[o], FS[o + 1], FS[o + 2], 0.07);
-  resetStreak(); if (SFX) SFX(10);
+  resetStreak(); if (SFX) SFX(10); voice(isT(f.s) ? 'trophyBroke' : 'broke', 0.2);
 }
 
 // ---------------------------------------------------------------- HUD (DOM)
@@ -405,7 +407,7 @@ function buildCard() {
   for (const f of HUD.card.querySelectorAll('figure')) f.prepend(fishCanvas(+f.dataset.s, 156, 65));
 }
 function newRound(seed) {
-  RD.seed = seed; RD.script = makeScript(seed); RD.next = 0; RD.t = 0; RD.air = AIR; RD.score = 0; RD.rows = []; RD.alarm = 0; RD.end = ''; RD.endT = 0; RD.slow = 0; RD.shots = 0; RD.stamp = ''; RD.curious = 0; RD.back = [0, 0, 0]; RD.lowAir = 0; RD.beat = 0;
+  RD.seed = seed; RD.script = makeScript(seed); RD.next = 0; RD.t = 0; RD.air = AIR; RD.score = 0; RD.rows = []; RD.alarm = 0; RD.end = ''; RD.endT = 0; RD.slow = 0; RD.shots = 0; RD.stamp = ''; RD.curious = 0; RD.back = [0, 0, 0]; RD.lowAir = 0; RD.vMiss = 0; voiceDive(); RD.beat = 0;
   RD.st = { shots: 0, hits: 0, hitShots: 0, stoned: 0, landed: 0, lost: 0, doubles: 0, biggest: 0, streak: 0, best: 0, bonus: 0, threads: 0, trophy: 0 };
   rng = mulberry(seed * 31337 + 7);
   for (const f of FI) { f.st = OFF; FST[f.i] = 4; fishInst(f.i, 0); }
@@ -423,7 +425,7 @@ function startRound(seed) {
   newRound(seed); RD.phase = 'descent'; HUD.card.className = 'on'; }
 function endRound(why) {
   if (RD.end) return; MUSIC = 0; MUSICT = 1; RD.end = why; RD.endT = why === 'protected' ? 2.2 : why === 'air' ? 1.2 : 1;
-  if (why === 'air') stamp('SURFACE!', 'warn'); else if (why === 'clear') stamp('ALL CLEAR', '', 1.4);
+  if (why === 'air') { stamp('SURFACE!', 'warn'); voice('surface', 0.2); } else if (why === 'clear') { stamp('ALL CLEAR', '', 1.4); voice('clear', 0.3); }
 }
 // ---------------------------------------------------------------- the trip
 // A trip is every dive site of a location, each dived once, in any order. One of them, picked at random, has the trophy.
@@ -431,7 +433,7 @@ function endRound(why) {
 const TRIP = { on: 0, seed: 0, trophy: -1, dives: [], cur: -1, order: [] };
 function newTrip(seed) {
   const r = mulberry(seed * 9973 + 5);
-  TRIP.on = 1; TRIP.seed = seed; TRIP.trophy = r() * LOC.sites.length | 0; TRIP.dives = LOC.sites.map(() => null); TRIP.cur = -1; TRIP.order = [];
+  voiceTrip(); TRIP.on = 1; TRIP.seed = seed; TRIP.trophy = r() * LOC.sites.length | 0; TRIP.dives = LOC.sites.map(() => null); TRIP.cur = -1; TRIP.order = [];
 }
 const tripScore = () => TRIP.dives.reduce((a, d) => a + (d ? d.score : 0), 0);
 const tripLeft = () => TRIP.dives.filter((d) => !d).length;
@@ -456,7 +458,7 @@ function endTrip() { TRIP.on = 0; TRIP.cur = -1; TRIP.dives = []; bDive.textCont
 // Every button on these screens beeps when clicked: forward ones (Start, a trip, Next dive…) confirm, Back and Close go
 // down, the rest select. Picking a dive plays the dive-start sound instead (startDive), and the name form its own.
 addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b || b.disabled || b.closest('#hud') || b === $('dv') || b.classList.contains('dcard')) return;
+  const b = e.target.closest('button'); if (!b || b.disabled || b.closest('#hud') || b === $('dv') || b === $('cb') || b.classList.contains('dcard')) return;
   sound(); if (!SFX) return;
   SFX(b.matches('.back, #popx, #optx') ? 22 : b.matches('#d, .go, #again') ? 21 : 20);
 }, true);
@@ -575,19 +577,19 @@ function arcStep(dtr) {
     if (RD.t > DESCENT - 2.2) HUD.card.className = '';
     const cd = RD.t < DESCENT - 2 ? 0 : RD.t < DESCENT - 1 ? 1 : 2;
     if (cd > RD.beat) { RD.beat = cd; stamp(cd === 1 ? 'READY?' : 'SET…', 'cd', 0.9); if (SFX) SFX(13); }
-    if (RD.t >= DESCENT) { RD.phase = 'bottom'; RD.t = 0; stamp('HUNT!', 'go', 1); if (SFX) SFX(14); MUSIC = 1; }
+    if (RD.t >= DESCENT) { RD.phase = 'bottom'; RD.t = 0; stamp('HUNT!', 'go', 1); if (SFX) SFX(14); MUSIC = 1; voice('hunt', 0.4); }
   } else if (RD.phase === 'bottom') {
     if (!RD.end) {
       RD.air = max(0, RD.air - dt);
       if (RD.air <= 0) endRound('air');
       const a = RD.air / AIR; MUSICT = a < 0.4 ? 1 + 0.3 * (0.4 - a) / 0.4 : 1;
-      if (a < 0.25 && !RD.lowAir) { RD.lowAir = 1; stamp('LOW AIR!', 'warn', 1.2); }
+      if (a < 0.25 && !RD.lowAir) { RD.lowAir = 1; stamp('LOW AIR!', 'warn', 1.2); voice('lowAir', 0.3); }
       if (a < 0.25 && (RD.beatT = (RD.beatT || 0) - dtr) <= 0) { RD.beatT = 0.45 + a * 2; if (SFX) SFX(16); }
       // the script: entries come in on time unless the scene is still alarmed
       while (RD.next < RD.script.length && RD.script[RD.next].t <= RD.t) {
         const e = RD.script[RD.next];
         if (!isA(e.s) && RD.alarm > 0.6) { e.t += 1; break; }
-        const f = fishOf(e.s); if (f) { spawn(f); if (isA(e.s)) { placeGaribaldi(f, 1); if (e.escort) escort(f); } else { enter(f, e.side, e.kelp); if (isT(e.s)) { stamp('TROPHY FISH!', 'gold', 1.5); if (SFX) SFX(15); } } }
+        const f = fishOf(e.s); if (f) { spawn(f); if (isA(e.s)) { placeGaribaldi(f, 1); if (e.escort) escort(f); } else { enter(f, e.side, e.kelp); if (isT(e.s)) { stamp('TROPHY FISH!', 'gold', 1.5); if (SFX) SFX(15); voice('trophyIn', 0.3); } } }
         RD.next++;
       }
       // the scene is empty: nothing left to come and no sheephead around
@@ -804,6 +806,7 @@ function showFinal() {
     return rowEl('trip', `<span>${LOC.sites[k].name} <i>${d.st.landed} landed</i></span><span class=o>${d.end === 'protected' ? 'WRONG FISH' : d.end === 'air' ? 'OUT OF AIR' : 'ALL CLEAR'}</span><b>${d.score}</b>`, shot(LOC, k, 96, 40)); });
   list.push(td.st.trophy ? rowEl('troph', `<span>${SPEC[T].n} <i>${tr ? tr.inch + ' in' : ''}</i><em>Trophy</em></span><span class=o>LANDED</span><b>+${tp}</b>`, silhouette(T, null, ''))
     : rowEl('lost', `<span>${SPEC[T].n}</span><span class=o>${brk ? 'BROKE OFF' : 'TROPHY MISSED'}</span><b>${tp ? '+' + tp : 0}</b>`, silhouette(T, null, 'lost')));
+  if (!td.st.trophy) voice('trophyMissed', 1);
   tallyRun('Trip over', `${LOC.name} · ${PLAYER}`, list, total, () => { showStats(S, total, '', LOC.sites.length); afterBoard(); });
 }
 // a dive or a trip (n dives) in numbers, a verdict on dinner, and a few badges
@@ -821,6 +824,7 @@ function showStats(S, sc, end, n) {
   const cells = [['Shots', S.shots], ['Accuracy', S.shots ? acc + '%' : '—'], ['Stoned', S.stoned], ['Landed', S.landed], ['Biggest', S.biggest ? S.biggest + ' in' : '—'], ['Best streak', S.best], ['Got away', S.lost], ['Bonus', S.bonus ? '+' + S.bonus : 0]];
   $('stats').innerHTML = cells.map(([k, v]) => `<p><b>${v}</b><span>${k}</span></p>`).join('');
   $('verdict').textContent = verdict(S, sc, end, n);
+  if (end !== 'protected') voice(!S.shots ? 'noShots' : sc >= 1500 * n ? 'great' : sc < 300 * n ? 'poor' : '', 0.4); // the wrong fish already had its line
   const aw = [];
   if (S.stoned >= 2 * n) aw.push('Headhunter'); if (S.shots >= 3 && acc === 100) aw.push('Dead eye'); if (S.trophy) aw.push('Trophy hunter');
   if (S.threads) aw.push('Threaded the needle'); if (S.doubles) aw.push('Shish kebab'); if (S.best >= 3) aw.push('On fire'); if (end === 'protected' || S.prot) aw.push('Perch puncher');
@@ -845,6 +849,7 @@ function showBoard(b, me, rank) {
   $('lbt').textContent = (b === w || rank ? 'World top 10' : 'Top 10 on this device') + ' · ' + LOC.name + ' trips' + (rank ? ` · you are #${rank}` : '') + (LBU && !w ? ' · world board offline' : '');
   b.forEach((e, k) => { const li = document.createElement('li'); if (k === me) li.className = 'me'; li.innerHTML = `<b></b><span>${e.score}</span>`; li.firstChild.textContent = e.name; ol.append(li); });
   if (!b.length) ol.innerHTML = '<li class=none>No scores yet: be the first</li>';
+  if (me === 0) voice('highScore', 0.3); // top of the board
   const a = $('again'); a.textContent = 'Play again'; a.hidden = false; setTimeout(() => a.focus(), 50);
 }
 // the leaderboard popup on the trip picker: a location's board, fetched fresh
@@ -883,3 +888,4 @@ buildCard();
 newRound(1); RD.phase = 'idle';
 { const keep = RD.t; RD.t = 0; camera(0); RD.t = keep; }
 GAME = 1;
+sound(); // loading is done: the sound starts now if the browser allows it, else on the first click

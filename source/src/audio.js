@@ -7,6 +7,7 @@ let AC, OUT, muted = false;
 var SFX; // game sounds, once the graph exists: SFX(k)
 var MUSIC = 0, MUSICT = 1; // arcade.js: the hunt track on / off, and its tempo factor (it speeds up as the air runs low)
 const VOL = 0.78; // master level: about -18.5 LUFS, peaks near -5.5 dBFS
+const AMB = 0.45, WASH = 0.7; // the ambient bed (rumble, wash, rush, drone, bubbles, chimes, whales) under the game sounds and the announcer; WASH: the surface waves, a further cut
 function mkSound(ac) {
   const sr = ac.sampleRate;
   // node of class C with options o, connected to every node / param in `to`; sources start at once
@@ -22,18 +23,19 @@ function mkSound(ac) {
 
   const lim = N(DynamicsCompressorNode, { threshold: -6, knee: 6, ratio: 20, attack: 0.003, release: 0.3 }, ac.destination);
   const out = OUT = G(0, lim), wet = N(ConvolverNode, { buffer: ir }, out);
+  const amb = G(AMB, out), ambWet = G(AMB, wet); // the ambient layers' own bus, dry and into the reverb
   const src = (playbackRate, ...to) => N(AudioBufferSourceNode, { buffer: nb, loop: true, playbackRate }, ...to);
   // rumble
-  const rum = G(0.34, out); src(1, BQ('lowpass', 150, 0.7, rum)); lfo(0.07, 0.11, rum.gain); lfo(0.113, 0.08, rum.gain);
+  const rum = G(0.34, amb); src(1, BQ('lowpass', 150, 0.7, rum)); lfo(0.07, 0.11, rum.gain); lfo(0.113, 0.08, rum.gain);
   // surface wash + water rush: the same noise played at another speed, so the loops never line up
-  const wash = G(0.25, out), wave = G(1, wash), rush = G(0, out), rushF = BQ('bandpass', 300, 0.9, rush);
+  const wash = G(0.25 * WASH, amb), wave = G(1, wash), rush = G(0, amb), rushF = BQ('bandpass', 300, 0.9, rush);
   src(0.63, BQ('bandpass', 420, 0.5, wave), rushF); lfo(0.09, 0.3, wave.gain); lfo(0.151, 0.25, wave.gain);
   // drone: stacked fifths on D, each note a pair of slightly detuned sines that slowly beat
-  const pad = G(1, out, G(1.5, wet));
+  const pad = G(1, amb, G(1.5, ambWet));
   [73.42, 110, 164.81, 246.94, 369.99].forEach((f, i) => { const g = G(0.022 - i * 0.003, pad); N(OscillatorNode, { frequency: f }, g); N(OscillatorNode, { frequency: f + rr(0.03, 0.11) }, g); });
   // pooled voices: oscillator -> envelope -> pan -> dry + reverb
-  const pool = (n, send, type) => Array.from({ length: n }, () => { const p = N(StereoPannerNode, {}, out, G(send, wet)), g = G(0, p); return { p, g, o: N(OscillatorNode, { type }, g) }; });
-  const bub = pool(4, 0.12), chime = pool(3, 1.2), whale = pool(2, 2, 'triangle');
+  const pool = (n, send, type, dry = out, rev = wet) => Array.from({ length: n }, () => { const p = N(StereoPannerNode, {}, dry, G(send, rev)), g = G(0, p); return { p, g, o: N(OscillatorNode, { type }, g) }; });
+  const bub = pool(4, 0.12), aBub = pool(4, 0.12, 'sine', amb, ambWet), chime = pool(3, 1.2, 'sine', amb, ambWet), whale = pool(2, 2, 'triangle', amb, ambWet); // bub: the dive-start sound's
   // one note: pitch glides f0 -> f1 over dur, level rises to vol in att then dies away
   const play = (vs, t, f0, f1, dur, vol, att) => {
     const v = vs.shift(), f = v.o.frequency, g = v.g.gain; vs.push(v);
@@ -101,6 +103,16 @@ function mkSound(ac) {
     }
     else if (k === 24) beep(t, st(20) * rr(0.98, 1.02), 0, 0.035, 0.05, 0.002);
     else if (k === 25) beep(t, st(8 + a * 14), 0, 0.03, 0.045, 0.002);
+    // the coin door (main.js): 26 the coin tossed (a whoosh), 27 into the slot (a bright metal clink, then a rattle down
+    // the mech and a thud), 28 the credit coming up (a rising arcade chime)
+    else if (k === 26) { hiss(t, 900, 3800, 0.4, 0.12, 2, 0.25); play(tick, t + 0.1, 5200, 5600, 0.05, 0.02, 0.002); }
+    else if (k === 27) {
+      [[3150, 0.6, 0.13], [4720, 0.4, 0.08], [6890, 0.25, 0.05], [2210, 0.5, 0.06]].forEach(([f, d, v]) => play(tone, t, f, f * 0.995, d, v, 0.002));
+      hiss(t, 7000, 4000, 0.06, 0.25, 3, 0.001);
+      for (let i = 0; i < 5; i++) play(tick, t + 0.12 + i * 0.045 + i * i * 0.006, 2600 - i * 180, 2200 - i * 150, 0.02, 0.05 - i * 0.006, 0.001);
+      play(tone, t + 0.42, 150, 55, 0.22, 0.45, 0.004); hiss(t + 0.42, 600, 200, 0.12, 0.3, 0.8);
+    }
+    else if (k === 28) { [10, 15, 19, 22, 27].forEach((n, i) => beep(t + i * 0.05, st(n), 0, 0.12, 0.09)); beep(t + 0.27, st(34), st(39), 0.4, 0.07); hiss(t + 0.25, 6000, 9000, 0.35, 0.08, 3); }
   };
   // the hunt track: kick, hats, clap, a sawtooth bass line in D minor and an arpeggio that comes in when air is low
   const mus = G(0, out), musF = BQ('lowpass', 700, 5, mus), nzM = mkNz(2, mus), hissM = hissOf(nzM);
@@ -111,7 +123,8 @@ function mkSound(ac) {
   let mNext = 0, mStep = 0;
   const env = (v, t, f, vol, len) => { v.o.frequency.setValueAtTime(f, t); v.g.setValueAtTime(0, t); v.g.linearRampToValueAtTime(vol, t + 0.008); v.g.setTargetAtTime(0, t + len, 0.03); };
   const musicTick = (now) => {
-    mus.gain.setTargetAtTime(MUSIC ? 0.5 : 0, now, MUSIC ? 0.4 : 0.8);
+    mus.gain.setTargetAtTime(MUSIC ? (DUCK ? 0.2 : 0.5) : 0, now, DUCK ? 0.06 : MUSIC ? 0.4 : 0.8); // ducked under the announcer
+    amb.gain.setTargetAtTime(AMB * (DUCK ? 0.5 : 1), now, DUCK ? 0.06 : 0.4); // and so is the ambience
     if (!MUSIC) { mNext = 0; return; }
     if (mNext < now) { mNext = now + 0.05; mStep = 0; }
     const e8 = 60 / (128 * MUSICT) / 2;
@@ -136,11 +149,11 @@ function mkSound(ac) {
     let v = hypot(F[CX] - lx, F[CY] - ly, F[CZ] - lz) / dt; if (v > 60) v = 0; // ignore jumps to a viewpoint
     lt = now; lx = F[CX]; ly = F[CY]; lz = F[CZ];
     rush.gain.setTargetAtTime(0.5 * pow(min(v / 26, 1), 1.2), t, 0.3); rushF.frequency.setTargetAtTime(220 + v * 14, t, 0.3);
-    const s = clamp(1 + ly / 30, 0, 1); wash.gain.setTargetAtTime(0.25 + 0.55 * s * s, t, 0.5);
+    const s = clamp(1 + ly / 30, 0, 1); wash.gain.setTargetAtTime((0.25 + 0.55 * s * s) * WASH, t, 0.5);
     if (REEL) for (tR = max(tR, t); tR < t + 0.1; tR += 0.042) play(tick, tR, 2100, 1700, 0.012, 0.04, 0.001); // reel ratchet
     if (t > tB) { // a burst of 1-6 bubbles: short rising blips, smaller bubbles higher and shorter
       let tt = t;
-      for (let n = 1 + rnd() * rnd() * 6 | 0; n--;) { const f = rr(380, 1300); play(bub, tt, f, f * rr(1.4, 2.2), 0.05 + 40 / f, rr(0.03, 0.08), 0.006); tt += rr(0.07, 0.2); }
+      for (let n = 1 + rnd() * rnd() * 6 | 0; n--;) { const f = rr(380, 1300); play(aBub, tt, f, f * rr(1.4, 2.2), 0.05 + 40 / f, rr(0.03, 0.08), 0.006); tt += rr(0.07, 0.2); }
       tB = tt + rr(0.5, 5);
     }
     if (t > tC) { const f = 440 * pow(2, NOTES[rnd() * 9 | 0] / 12); play(chime, t, f, f, 5, rr(0.02, 0.04), 0.03); tC = t + rr(2.5, 9); }
@@ -151,10 +164,13 @@ function mkSound(ac) {
     }
   };
 }
-// called on every click / key / touch: builds the graph once and resumes it when the browser allows
+// called once loading is done (arcade.js: the ambience starts then if the browser allows it) and on every click / key / touch: builds the graph once and resumes it when
+// the browser allows
 function sound() {
-  if (!AC) { AC = new AudioContext({ latencyHint: 'playback' }); setInterval(mkSound(AC), 100); }
+  if (!AC) {
+    AC = new AudioContext({ latencyHint: 'playback' }); setInterval(mkSound(AC), 100); voicePreload();
+  }
   if (AC.state === 'suspended' && !document.hidden) AC.resume();
 }
-const mute = () => { muted = !muted; OUT.gain.setTargetAtTime(muted ? 0 : VOL, AC.currentTime, 0.08); };
+const mute = () => { muted = !muted; if (muted) vStop(); OUT.gain.setTargetAtTime(muted ? 0 : VOL, AC.currentTime, 0.08); };
 document.addEventListener('visibilitychange', () => { if (AC) document.hidden ? AC.suspend() : AC.resume(); });

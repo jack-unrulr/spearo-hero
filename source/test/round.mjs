@@ -20,13 +20,19 @@ await c.waitFor('window.TT && TT.ready && TT.arc && document.body.className !== 
 await c.ev('localStorage.removeItem("spearo.scores.tofino-trip"); localStorage.removeItem("spearo.name")');
 const Q = (sel) => `document.querySelector(${JSON.stringify(sel)})`;
 
-// ---- home: just Start and the options button; options has the detail level and the controls
-check(await c.ev(`!document.getElementById("loc") && getComputedStyle(${Q('#d')}).display !== "none" && TT.arc.state().scr === "home"`), 'home screen: Start, no location row');
+// ---- home: the coin door (Start comes once a coin is in) and the options button; options has the detail level and the controls
+check(await c.ev(`!document.getElementById("loc") && getComputedStyle(${Q('#cd')}).display !== "none" && getComputedStyle(${Q('#d')}).display === "none" && TT.arc.state().scr === "home"`), 'home screen: the coin door, no Start yet, no location row');
+await snap('00-coin');
 await c.ev(`${Q('#ob')}.click()`); await c.sleep(150);
 check(await c.ev(`!${Q('#opt')}.hidden && ${Q('#opt #q')}.textContent.includes("Detail") && ${Q('#opt #k')}.textContent.includes("Fire")`), 'options popup: detail level and controls');
 await snap('0a-options');
 await c.tap('Escape'); await c.sleep(100);
 check(await c.ev(`${Q('#opt')}.hidden && document.body.className === "m"`), 'Esc closes the options');
+// ---- a coin in (Enter): the credit comes up, then Start and the announcer's title line
+await c.tap('Enter');
+check(await until(`${Q('#cd .cr')}.textContent === "CREDIT 1"`, 2500), 'Enter puts a coin in: CREDIT 1');
+check(await until(`getComputedStyle(${Q('#d')}).display !== "none" && getComputedStyle(${Q('#cd')}).display === "none"`, 2500), 'then the door goes and Start comes');
+check(await until('TT.arc.voice().includes("title-1")', 1500), 'the announcer says the title as Start comes');
 // ---- Start > trip picker (a card per location, its Top 10 popup) > Player 1's name > dive picker
 await c.ev(`${Q('#d')}.click()`);
 check(await until('TT.arc.state().scr === "trips" && document.querySelectorAll("#tripc .tcard .go").length === 1', 3000), 'Start opens the trip picker: one trip card');
@@ -210,8 +216,8 @@ check(await c.ev('getComputedStyle(document.getElementById("again")).display ===
 { const r = await c.ev('JSON.stringify(document.getElementById("rows").getBoundingClientRect())'), x = JSON.parse(r); check(Math.abs(x.left + x.width / 2 - 480) < 12, 'the rows are centred while they count'); }
 await snap('8a-counting');
 check(await until('TT.arc.state().mode === "trip" && TT.arc.state().board', 20000), 'trip results with the board');
-await c.sleep(1000);
-check(await c.ev('document.getElementById("rows").getBoundingClientRect().right < 480 && !document.getElementById("tally").classList.contains("cnt")'), 'then they slide left and the stats come in');
+// (left of the stats column, not of a fixed x: the column's width follows the verdict and badges, which vary)
+check(await until('document.getElementById("rows").getBoundingClientRect().right <= document.querySelector("#tally .tc").getBoundingClientRect().left + 1 && document.getElementById("rows").getBoundingClientRect().left < innerWidth / 2 && !document.getElementById("tally").classList.contains("cnt")', 3000), 'then they slide left and the stats come in');
 check(await c.ev('document.getElementById("th").textContent === "Trip over" && document.querySelectorAll("#rows .row").length === 4'), 'a row per dive and one for the trophy');
 check(await until(`document.getElementById("tsc").textContent === "${trip.total}"`, 5000), 'the total is the trip score');
 check((await c.ev('document.querySelector("#rows .row:last-child b").textContent')).length > 0, 'the trophy row shows its points (0 if missed)');
