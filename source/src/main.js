@@ -593,6 +593,26 @@ $('ob').onclick = () => { $('opt').hidden = false; setTimeout(() => $('optx').fo
 $('optx').onclick = () => { $('opt').hidden = true; $('ob').focus(); };
 $('opt').onclick = (e) => { if (e.target === $('opt')) $('opt').hidden = true; };
 addEventListener('keydown', (e) => { if (e.code === 'Escape' && !$('opt').hidden) { $('opt').hidden = true; e.stopImmediatePropagation(); if (SFX) SFX(22); } }, true);
+// full screen (the corner button or F): hides the browser's tabs and address bar. The browser keeps Esc for leaving full
+// screen and the page never sees it, so leaving it mid-dive pauses, the same as Esc does otherwise. The class goes on <html>
+// since ui() rewrites body's. No button where pages can't go full screen (iPhone Safari).
+const fsBtn = $('fs');
+const fsToggle = () => {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+};
+if (!document.fullscreenEnabled) fsBtn.hidden = true;
+fsBtn.onclick = () => { sound(); fsToggle(); fsBtn.blur(); };
+document.addEventListener('fullscreenchange', () => {
+  const on = !!document.fullscreenElement;
+  document.documentElement.classList.toggle('fs', on);
+  fsBtn.title = on ? 'Exit full screen (F)' : 'Full screen (F)'; fsBtn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+  if (!on && !menu) ui(true);
+});
+addEventListener('keydown', (e) => {
+  if (e.code !== 'KeyF' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !fsBtn.isConnected || fsBtn.hidden || /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  fsToggle();
+});
 // detail buttons: the current level is lit, the others reload the page with theirs
 $('q').querySelectorAll('button').forEach((b, i) => { if (i === 2 - LV) b.className = 'on'; else b.onclick = () => { keep('abyssal', 2 - i); location.reload(); }; });
 

@@ -84,6 +84,15 @@ body:not(.g) :is(#c, #fx) { filter: blur(1vmax) brightness(.5); transform: scale
 }
 #ob svg, #o svg { width: 1.2em; height: 1.2em; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 .l #ob { display: none; }
+/* full screen: just left of the menu button, in the menus and the scene (not while loading or with the mouse captured) */
+#fs {
+  position: absolute; z-index: 8; top: .6em; right: 3.8em; width: 2.6em; height: 2.6em; padding: 0; display: flex; align-items: center; justify-content: center;
+  background: #03222dd9; box-shadow: inset 0 0 0 2px #7ff3ff, 0 .3em 1em #0009; color: #e8fbff; opacity: .8;
+}
+#fs svg { width: 1.2em; height: 1.2em; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+#fs .x, :root.fs #fs .e { display: none; }
+:root.fs #fs .x { display: inline; }
+#fs[hidden], .l #fs, .p #fs { display: none; }
 #opt { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: #020a10cc; }
 #opt[hidden] { display: none; }
 #opt > div { display: grid; justify-items: stretch; gap: .8em; width: 24em; max-width: calc(100% - 2em); max-height: calc(100% - 2em); overflow: auto; padding: 1.4em 1.6em; border-radius: 1em; background: #03131cf2; box-shadow: 0 0 0 2px #7ff3ff66, 0 0 2em #00e5ff44; color: #e8fbff; text-align: center; }
@@ -463,10 +472,12 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
     <p>
       <i><b>Esc</b></i>Pause
       <i><b>M</b></i>Mute
+      <i><b>F</b></i>Full screen
     </p>
   </div>
   <button id=optx>Close</button></div></div>
 <div id=pop hidden role=dialog aria-label="Leaderboard"><div><h2>Top 10</h2><p class=k id=popt></p><ol class=lb id=popl></ol><button id=popx>Close</button></div></div>
+<button id=fs aria-label="Full screen" title="Full screen (F)"><svg viewBox="0 0 20 20" aria-hidden=true><path class=e d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/><path class=x d="M7 3v4H3M17 7h-4V3M13 17v-4h4M3 13h4v4"/></svg></button>
 <button id=o aria-label=Menu><svg viewBox="0 0 20 20" aria-hidden=true><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
 <pre id=i></pre>
 <i id=x></i>
