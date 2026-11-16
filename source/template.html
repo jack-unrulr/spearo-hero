@@ -35,7 +35,7 @@ body:not(.g) canvas { filter: blur(1vmax) brightness(.5); transform: scale(1.06)
   padding: 2.6em 1em; text-align: center; background: radial-gradient(#03131c00 30%, #03131ccc);
   transition: opacity .5s, visibility .5s;
 }
-.g #m, .m #l, .l #g { opacity: 0; visibility: hidden; }
+.g #m, .m #l, .l #g, #a:not(.who) #who, #a.who #g { opacity: 0; visibility: hidden; }
 :root { --arc: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', system-ui, sans-serif; }
 /* the logo: chrome lettering, italic and leaning forward, a spear through it and a starburst */
 #logo { position: relative; display: grid; justify-items: center; line-height: .86; transform: skewX(-9deg) rotate(-3deg); margin: .2em 0 -.2em; }
@@ -195,15 +195,13 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
   border-radius: 1em; background: #03131cd0; box-shadow: inset 0 0 0 2px #7ff3ff55, 0 1em 3em #000a; text-align: center;
   opacity: 0; visibility: hidden; transition: opacity .6s, transform .6s, visibility .6s; pointer-events: none;
 }
-#who { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; width: 24em; max-width: 92vw; padding: 1.2em 1.6em 1.5em; border: 3px solid #ffe24a; border-radius: 1em;
-  background: #03131ce6; box-shadow: inset 0 0 0 2px #7ff3ff55, 0 1em 3em #000a; text-align: center; color: #fff; }
-#who[hidden] { display: none; }
+#who { align-self: center; padding: 1.1em 1.4em 1.4em; border: 3px solid #ffe24a; border-radius: 1em; background: #03131ce6; box-shadow: inset 0 0 0 2px #7ff3ff55, 0 1em 3em #000a; color: #fff; }
 #who h2 { margin: .1em 0 .2em; font: italic 400 2.6em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; -webkit-text-stroke: .03em #071a3a; text-shadow: .06em .06em 0 #071a3a; transform: skewX(-8deg); }
 #who p { margin: .3em 0; color: #9ff6ff; }
-#nm { display: block; width: 7.6ch; margin: .4em auto .3em; padding: .1em .3em; border: 0; border-bottom: 3px solid #ffe24a; background: none; outline: none; text-align: center;
+#nm { display: block; box-sizing: content-box; width: 5.4em; margin: .4em auto .3em; padding: .1em .2em .1em .32em; border: 0; border-bottom: 3px solid #ffe24a; background: none; outline: none; text-align: center;
   font: 900 2.4em/1.2 ui-monospace, monospace; letter-spacing: .12em; color: #fff27a; caret-color: #ffe24a; }
-#who .k { font-size: .8em; opacity: .8; }
-#dv { display: block; margin: .7em auto 0; padding: .45em 1.8em; border: 0; border-radius: 2em; font: italic 400 1.5em/1 var(--arc); letter-spacing: .12em; text-transform: uppercase; color: #fff; text-shadow: .06em .06em 0 #7a0c0c; background: radial-gradient(circle at 50% 25%, #ff8a6a, #e8231c 55%, #9c0d0d); box-shadow: inset 0 -.15em #0005, 0 .18em 0 #5a0505; cursor: pointer; }
+#who .k { font-size: .8em; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+#dv { display: block; margin: .8em auto 0; padding: .45em 1.8em; border: 0; border-radius: 2em; font: italic 400 1.5em/1 var(--arc); letter-spacing: .12em; text-transform: uppercase; color: #fff; text-shadow: .06em .06em 0 #7a0c0c; background: radial-gradient(circle at 50% 25%, #ff8a6a, #e8231c 55%, #9c0d0d); box-shadow: inset 0 -.15em #0005, 0 .18em 0 #5a0505; cursor: pointer; }
 #card.on { opacity: 1; visibility: visible; transform: translate(-50%, -50%); }
 #card h2, #tally h2 { margin: .15em 0; font: italic 400 2.6em/1 var(--arc); letter-spacing: .05em; text-transform: uppercase; color: #ffe24a; -webkit-text-stroke: .03em #071a3a; text-shadow: .06em .06em 0 #071a3a; transform: skewX(-8deg); }
 #card .d { color: #9ff6ff; margin-bottom: 1.5em; }
@@ -318,11 +316,11 @@ button:active, a:active { transform: translateY(.1em); filter: brightness(.9); }
         <p>
           <i><b>Esc</b></i>Pause
           <i><b>M</b></i>Mute
-          <i><b>H</b></i>Stats
         </p>
       </div>
       <p id=h>Best on a computer with a mouse</p>
     </div>
+    <form id=who><h2>Player 1</h2><p>Enter your name</p><input id=nm maxlength=7 autocomplete=off autocapitalize=characters spellcheck=false enterkeyhint=go aria-label="Player 1 name"><p class=k>Up to 7 letters</p><button id=dv>Dive</button></form>
   </div>
   <p id=fp>Free play</p>
   <div id=bub><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>

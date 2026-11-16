@@ -387,7 +387,7 @@ if (hasTS) {
 }
 
 // ---------------------------------------------------------------- frame
-let hud = false;
+let hud = false; const STATS = new URLSearchParams(location.search).has('stats'); // H: frame stats, with ?stats in the URL
 let hN = 0, hMax = 0, hMin = 1e9, hPer = 1e9, hLate = 0, hTot = 0;
 const TANH = 0.46, NEAR = 0.1, EXPO = 0.62, RAYS = 0.54;
 const submitList = [null];
@@ -537,9 +537,9 @@ function frame(now) {
 // ---------------------------------------------------------------- keys (aiming and firing are in arcade.js)
 // behind the menu only the stats and mute keys work
 addEventListener('keydown', (e) => {
-  if (e.repeat || menu && e.code !== 'KeyH' && e.code !== 'KeyM') return;
+  if (e.repeat || menu && e.code !== 'KeyM') return;
   sound();
-  if (e.code === 'KeyH') { hud = !hud; hTot = 0; hPer = 1e9; info.textContent = ''; }
+  if (e.code === 'KeyH' && STATS) { hud = !hud; hTot = 0; hPer = 1e9; info.textContent = ''; }
   else if (e.code === 'KeyM') mute();
   else if (e.code === 'Escape') ui(true);
 });
@@ -552,11 +552,23 @@ const ui = (m) => {
   if (dead) return;
   menu = m; body.className = m ? 'm' : 'g';
   // focus the dive button so Enter works (delayed: it can't take focus while still hidden)
-  if (m) setTimeout(() => menu && bDive.focus(), 100); else document.activeElement.blur();
+  if (m) { fitMenu(); setTimeout(() => menu && bDive.focus(), 100); } else document.activeElement.blur();
 };
+// the start screen shrinks to fit short windows: everything in it is sized in em, so scale its font until the logo's
+// starburst clears the hi-score line and the last row clears the bottom (a few passes: the logo also follows vh)
+function fitMenu() {
+  const m = $('m'); m.style.fontSize = '';
+  for (let k = 0; k < 3; k++) {
+    // it's centred, so distances from the middle scale with the font: shrink until both ends fit
+    const c = m.clientHeight / 2, top = $('logo').querySelector('.burst').getBoundingClientRect().top, bot = $('a').getBoundingClientRect().bottom;
+    const k2 = Math.min((c - $('hi').getBoundingClientRect().bottom - 8) / (c - top), (c - 8) / (bot - c));
+    if (k2 >= 1) break;
+    m.style.fontSize = parseFloat(getComputedStyle(m).fontSize) * Math.max(0.6, k2 * 0.98) + 'px';
+  }
+}
+addEventListener('resize', () => menu && fitMenu());
 const go = () => {
-  sound(); ui(false); bDive.textContent = 'Resume';
-  arcGo();
+  sound(); if (arcGo()) { ui(false); bDive.textContent = 'Resume'; } // a new trip asks for the name first (arcade.js)
 };
 bDive.onclick = go; $('o').onclick = () => ui(true);
 // detail buttons: the current level is lit, the others reload the page with theirs

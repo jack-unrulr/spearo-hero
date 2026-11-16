@@ -11,7 +11,7 @@
   TT.arc = {
     state: () => ({ phase: RD.phase, t: RD.t, air: RD.air, score: RD.score, rows: RD.rows, end: RD.end, alarm: RD.alarm, gun: GUN[gst], stopped, spFish, spFish2, doubles: RD.st.doubles, stamp: RD.stamp, menu, seed: RD.seed, shots: RD.shots, hit: G[gHIT], curious: RD.curious, back: RD.back, tallyRows: document.querySelectorAll('#rows .row canvas').length, ini: iniOn, board: !$('again').hidden }),
     fish: () => FI.map((f) => ({ i: f.i, s: f.s, st: STN[f.st], x: f.x, d: f.d, h: f.h, wound: f.wound, spooks: f.spooks, vis: FST[f.i] === 0 && !!onScreen(f.i) })),
-    go: (seed, name = 'TST') => { ui(false); PLAYER = name; startRound(seed); return RD.seed; },
+    go: (seed, name = 'TST') => { if (iniOn) closeName(); ui(false); PLAYER = name; startRound(seed); return RD.seed; },
     speed: (k) => { RD.speed = k; },
     rig: (r) => { RD.rig = r; },
     hold: (v) => { hold = !!v; RD.still = hold ? 1 : 0; },

@@ -319,7 +319,6 @@ function tearOne(f, dt) {
 document.body.insertAdjacentHTML('beforeend', `<canvas id=fx></canvas>
 <div id=hud><p id=sc0>1UP <b id=sc>0</b></p><div id=air><i></i><span>AIR</span></div></div>
 <div id=card></div>
-<form id=who hidden><h2>Player 1</h2><p>Enter your name</p><input id=nm maxlength=7 autocomplete=off autocapitalize=characters spellcheck=false enterkeyhint=go aria-label="Player 1 name"><p class=k>Up to 7 letters or numbers · your trip score goes on the board under it</p><button id=dv>Dive</button></form>
 <p id=big></p>
 <div id=tally><div class=tl><h2>Round over</h2><p id=why></p><p id=tsc>0</p><div id=rows></div></div><div class=tc><div id=stats></div><p id=verdict></p><div id=awards></div><p id=lbt class=k></p><ol id=lb></ol><button id=again>Dive again</button></div></div>`);
 // the fx canvas has to come after the scene canvas but under the HUD: move it next to the canvas
@@ -423,33 +422,34 @@ function newRound(seed) {
 }
 function startRound(seed) {
   $('ps').hidden = true;
-  iniOn = false; $('who').hidden = true; for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
+  if (iniOn) closeName(); for (const t of tallyTimers) clearTimeout(t); tallyTimers = [];
   newRound(seed); RD.phase = 'descent'; HUD.card.className = 'on'; }
 function endRound(why) {
   if (RD.end) return; MUSIC = 0; MUSICT = 1; RD.end = why; RD.endT = why === 'protected' ? 2.2 : why === 'air' ? 1.2 : 1;
   if (why === 'air') stamp('SURFACE!', 'warn'); else if (why === 'clear') stamp('ALL CLEAR', '', 1.4);
 }
-function arcGo() { // the menu's Dive button: a new trip from the start screen or after a tally, else resume
-  if (RD.phase === 'idle' || RD.phase === 'tally') askName(seedFromUrl ?? (Math.random() * 99999 | 0) + 1);
-  seedFromUrl = null;
+function arcGo() { // the menu's Start button: a new trip asks for the player's name first (false: the menu stays up); else resume
+  if (RD.phase !== 'idle' && RD.phase !== 'tally') return true;
+  askName(seedFromUrl ?? (Math.random() * 99999 | 0) + 1); seedFromUrl = null; return false;
 }
 // ---------------------------------------------------------------- players
-// Each trip starts with its player entering a name (one player for now: Player 1). The last name used on this device is
-// filled in, so Enter is enough. The trip's score goes on the board under it at the end, whatever it is.
+// Each trip starts with its player entering a name on the start screen (one player for now: Player 1), in place of the
+// menu's buttons. The last name used on this device is filled in, so Enter is enough. The score goes on the board under it.
 let PLAYER = '', whoSeed = 0, iniOn = false;
-const myName = () => { try { const v = localStorage.getItem('spearo.name'); return /^[A-Z0-9]{1,7}$/.test(v || '') ? v : ''; } catch { return ''; } };
-const cleanName = (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, NAMEN);
+const myName = () => { try { const v = localStorage.getItem('spearo.name'); return /^[A-Z]{1,7}$/.test(v || '') ? v : ''; } catch { return ''; } };
+const cleanName = (v) => v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, NAMEN);
 function askName(seed) {
-  whoSeed = seed; iniOn = true; newRound(seed); RD.phase = 'idle'; camera(0);
-  const w = $('who'), n = $('nm'); n.value = myName(); w.hidden = false; setTimeout(() => { n.focus(); n.select(); }, 60);
+  whoSeed = seed; iniOn = true; newRound(seed); RD.phase = 'idle'; camera(0); ui(true);
+  const n = $('nm'); n.value = myName(); $('a').classList.add('who'); setTimeout(() => { n.focus(); n.select(); }, 60);
 }
+function closeName() { iniOn = false; $('a').classList.remove('who'); $('nm').blur(); }
 $('nm').oninput = (e) => { const n = e.target, v = cleanName(n.value); if (v !== n.value) n.value = v; };
 $('who').onsubmit = (e) => {
   e.preventDefault(); const v = cleanName($('nm').value); if (!v || !iniOn) { $('nm').focus(); return; }
-  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} iniOn = false; $('who').hidden = true; $('nm').blur(); sound(); startRound(whoSeed);
+  PLAYER = v; try { localStorage.setItem('spearo.name', v); } catch {} closeName(); sound(); ui(false); bDive.textContent = 'Resume'; startRound(whoSeed);
 };
-// typing in the name box doesn't reach the game's keys (H, M, fire…); Esc closes it and the menu opens as usual
-addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { iniOn = false; $('who').hidden = true; } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
+// typing in the name box doesn't reach the game's keys (M, fire…); Esc goes back to the menu's buttons
+addEventListener('keydown', (e) => { if (!iniOn) return; if (e.code === 'Escape') { closeName(); setTimeout(() => bDive.focus(), 50); } else if (e.target === $('nm')) e.stopImmediatePropagation(); }, true);
 let seedFromUrl = (() => { const v = new URLSearchParams(location.search).get('seed'); return v ? +v | 0 : null; })();
 
 // ---------------------------------------------------------------- the camera and the crosshair

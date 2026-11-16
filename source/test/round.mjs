@@ -158,15 +158,16 @@ check(await until('TT.arc.state().board', 15000), 'leaderboard after a scoreless
 
 // ---- Dive again: Player 1's name screen, filled with the last name; a new name is kept and the dive starts
 await c.ev('localStorage.setItem("spearo.name", "TST"); document.getElementById("again").click()');
-check(await until('TT.arc.state().ini', 3000), 'Dive again asks for the player\'s name');
+check(await until('TT.arc.state().ini && TT.arc.state().menu', 3000), 'Dive again asks for the player\'s name on the start screen');
+check(await until('getComputedStyle(document.getElementById("who")).visibility === "visible" && getComputedStyle(document.getElementById("d")).visibility === "hidden"', 3000), 'the name panel takes the place of the menu buttons');
 check(await c.ev('document.getElementById("nm").value') === 'TST', 'the last name is filled in');
 await c.sleep(200); await c.ev('document.getElementById("nm").value = ""');
-for (const k of ['KeyZ', 'KeyE', 'KeyD', 'KeyH']) { await c.tap(k); await c.sleep(60); }
-check(await c.ev('document.getElementById("nm").value') === 'ZEDH', 'typing fills the name box (H does not toggle the stats)');
+for (const k of ['KeyZ', 'KeyE', 'Digit5', 'KeyD', 'KeyM']) { await c.tap(k); await c.sleep(60); }
+check(await c.ev('document.getElementById("nm").value') === 'ZEDM', 'typing fills the name box, letters only (M does not mute)');
 await snap('7-player');
 await c.tap('Enter');
-check(await until('TT.arc.state().phase === "descent"', 3000), 'Enter starts the dive');
-check(await c.ev('localStorage.getItem("spearo.name")') === 'ZEDH', 'the new name is kept');
+check(await until('TT.arc.state().phase === "descent" && !TT.arc.state().menu', 3000), 'Enter closes the menu and starts the dive');
+check(await c.ev('localStorage.getItem("spearo.name")') === 'ZEDM', 'the new name is kept');
 
 const errs = c.logs.filter((l) => /^(error|EXC)/.test(l));
 check(errs.length === 0, 'no page errors' + (errs.length ? ':\n' + errs.join('\n') : ''));
