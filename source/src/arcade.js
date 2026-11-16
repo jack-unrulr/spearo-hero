@@ -789,10 +789,11 @@ function showTally() {
 function showFinal() {
   tallyMode = 'trip'; RD.lbP = lbFetch();
   const S = tripStats(), total = tripScore(), T = LOC.trophy, td = TRIP.dives[TRIP.trophy], tr = td.rows.find((r) => r.s === T && r.outcome !== 'GOT AWAY');
+  const tp = td.rows.filter((r) => r.s === T).reduce((a, r) => a + r.pts, 0); // what the trophy fish paid (0 if it never came to the spear)
   const list = TRIP.order.map((k) => { const d = TRIP.dives[k];
     return rowEl('trip', `<span>${LOC.sites[k].name} <i>${d.st.landed} landed</i></span><span class=o>${d.end === 'protected' ? 'WRONG FISH' : d.end === 'air' ? 'OUT OF AIR' : 'ALL CLEAR'}</span><b>${d.score}</b>`, shot(LOC, k, 96, 40)); });
-  list.push(td.st.trophy ? rowEl('troph', `<span>${SPEC[T].n} <i>${tr ? tr.inch + ' in' : ''}</i><em>Trophy</em></span><span class=o>LANDED</span><b></b>`, silhouette(T, null, ''))
-    : rowEl('lost', `<span>${SPEC[T].n}</span><span class=o>TROPHY MISSED</span><b></b>`, silhouette(T, null, 'lost')));
+  list.push(td.st.trophy ? rowEl('troph', `<span>${SPEC[T].n} <i>${tr ? tr.inch + ' in' : ''}</i><em>Trophy</em></span><span class=o>LANDED</span><b>+${tp}</b>`, silhouette(T, null, ''))
+    : rowEl('lost', `<span>${SPEC[T].n}</span><span class=o>TROPHY MISSED</span><b>${tp ? '+' + tp : 0}</b>`, silhouette(T, null, 'lost')));
   tallyRun('Trip over', `${LOC.name} · ${PLAYER}`, list, total, () => { showStats(S, total, '', LOC.sites.length); afterBoard(); });
 }
 // a dive or a trip (n dives) in numbers, a verdict on dinner, and a few badges

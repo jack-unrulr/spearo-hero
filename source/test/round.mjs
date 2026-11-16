@@ -214,6 +214,7 @@ await c.sleep(1000);
 check(await c.ev('document.getElementById("rows").getBoundingClientRect().right < 480 && !document.getElementById("tally").classList.contains("cnt")'), 'then they slide left and the stats come in');
 check(await c.ev('document.getElementById("th").textContent === "Trip over" && document.querySelectorAll("#rows .row").length === 4'), 'a row per dive and one for the trophy');
 check(await until(`document.getElementById("tsc").textContent === "${trip.total}"`, 5000), 'the total is the trip score');
+check((await c.ev('document.querySelector("#rows .row:last-child b").textContent')).length > 0, 'the trophy row shows its points (0 if missed)');
 check(await c.ev('document.querySelectorAll("#stats p").length === 8 && document.getElementById("again").textContent === "Play again"'), 'trip stats and Play again');
 if (trip.total > 0) {
   const lb = await c.ev('JSON.parse(localStorage.getItem("spearo.scores.tofino-trip"))');
