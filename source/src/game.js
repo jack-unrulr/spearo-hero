@@ -227,7 +227,7 @@ function fishInst(i, amp) {
 // moves the tip S[0] metres along its velocity in short steps; stops in rock or in the first fish it meets
 function spearMove() {
   const l = sqrt(G[gVX] * G[gVX] + G[gVY] * G[gVY] + G[gVZ] * G[gVZ]); if (l < 1e-6) return;
-  const dx = G[gVX] / l, dy = G[gVY] / l, dz = G[gVZ] / l, n = (S[0] / 0.1 | 0) + 1, st = S[0] / n;
+  const dx = G[gVX] / l, dy = G[gVY] / l, dz = G[gVZ] / l, n = (S[0] / 0.025 | 0) + 1, st = S[0] / n;
   for (let k = 0; k < n; k++) {
     const x = G[gPX] += dx * st, y = G[gPY] += dy * st, z = G[gPZ] += dz * st;
     QP[0] = x; QP[1] = y; QP[2] = z; rk(0);
@@ -237,11 +237,10 @@ function spearMove() {
       if (FST[i] !== 0) continue;
       const o = i * FN, ex = x - FS[o], ey = y - FS[o + 1], ez = z - FS[o + 2], len = FS[o + fLEN], d2 = ex * ex + ey * ey + ez * ez;
       if (d2 > len * len * 0.36) continue;
-      // capsule along the body; t = where along it, from the tail (-) to the nose (+)
-      const cp = cos(FS[o + fPIT]), fx = cos(FS[o + fYAW]) * cp, fy = sin(FS[o + fPIT]), fz = sin(FS[o + fYAW]) * cp;
-      let t = ex * fx + ey * fy + ez * fz; const h = hitH(i); t = t > h ? h : t < -h ? -h : t;
-      const px = ex - fx * t, py = ey - fy * t, pz = ez - fz * t, r = hitR(i), q = px * px + py * py + pz * pz;
-      if (q < r * r && q < bd) {
+      // the hit volume (fish.js hitIn); t = where along it, from the tail (-) to the nose (+)
+      const q = hitIn(i, ex, ey, ez), t = HT[0];
+      if (q < 1 && q < bd) {
+        const cp = cos(FS[o + fPIT]), fx = cos(FS[o + fYAW]) * cp, fy = sin(FS[o + fPIT]), fz = sin(FS[o + fYAW]) * cp;
         // where along the body: the spear's line passes closest to the fish's axis there (the skin it touches
         // first is nearer the middle on a fish that is angled away)
         bd = q; best = i; const ad = fx * dx + fy * dy + fz * dz, k = 1 - ad * ad;

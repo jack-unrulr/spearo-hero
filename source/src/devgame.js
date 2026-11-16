@@ -34,16 +34,13 @@
     },
     probe: () => {
       const cx = F[CX], cy = F[CY], cz = F[CZ];
-      for (let s = 0.3; s < LINE + MUZ; s += 0.05) {
+      for (let s = 0.3; s < LINE + MUZ; s += 0.02) {
         const x = cx + G[gAX] * s, y = cy + G[gAY] * s, z = cz + G[gAZ] * s;
         for (let i = 0; i < NF; i++) {
           if (FST[i] !== 0) continue;
           const o = i * FN, ex = x - FS[o], ey = y - FS[o + 1], ez = z - FS[o + 2], len = FS[o + fLEN];
           if (ex * ex + ey * ey + ez * ez > len * len * 0.36) continue;
-          const cp = cos(FS[o + fPIT]), fx = cos(FS[o + fYAW]) * cp, fy = sin(FS[o + fPIT]), fz = sin(FS[o + fYAW]) * cp;
-          let t = ex * fx + ey * fy + ez * fz; const h = hitH(i); t = t > h ? h : t < -h ? -h : t;
-          const px = ex - fx * t, py = ey - fy * t, pz = ez - fz * t, r = hitR(i);
-          if (px * px + py * py + pz * pz < r * r) return i;
+          if (hitIn(i, ex, ey, ez) < 1) return i;
         }
       }
       return -1;
@@ -51,6 +48,51 @@
     fire: () => { if (!gst && RD.phase === 'bottom' && !RD.end) { fireReq = 1; return true; } return false; },
     mouse: (x, y) => { RD.mx = x; RD.my = y; },
     screen: (i) => { const o = i * FN; return project(FS[o], FS[o + 1], FS[o + 2]) ? [PJ[0], PJ[1], PJ[2]] : null; },
+  };
+  // hit boxes: B (or ?boxes in the URL, or TT.arc.boxes(1)) draws each live fish's hit volume exactly as spearMove()
+  // tests it (fish.js hitIn, inside the 0.6-length sphere it checks first): every 4-pixel cell whose view ray passes
+  // through the volume is filled. Colour = the zone a hit there scores: head (red), body (yellow), tail (blue).
+  // Dashed: that outer sphere and the fish's axis. Label: half-height and half-width of the volume, length, in cm.
+  let boxes = new URLSearchParams(location.search).has('boxes');
+  TT.arc.boxes = (v) => { boxes = !!v; };
+  addEventListener('keydown', (e) => { if (e.code === 'KeyB' && !e.repeat) boxes = !boxes; });
+  const ZC = ['rgba(255,70,60,0.4)', 'rgba(255,220,60,0.35)', 'rgba(80,170,255,0.4)'], CELL = 4;
+  const draw0 = drawFx;
+  drawFx = (dt) => {
+    draw0(dt);
+    if (!boxes) return;
+    const cw = fx.clientWidth, ch = fx.clientHeight, asp = cw / max(1, ch), ppm = ch / 2 / TANH; // pixels per metre at 1 m
+    fxc.save(); fxc.font = '600 10px ui-monospace, monospace'; fxc.textAlign = 'center';
+    for (let i = 0; i < NF; i++) {
+      if (FST[i] !== 0) continue;
+      const o = i * FN, len = FS[o + fLEN], R = len * 0.6;
+      const cp = cos(FS[o + fPIT]), ax = cos(FS[o + fYAW]) * cp, ay = sin(FS[o + fPIT]), az = sin(FS[o + fYAW]) * cp;
+      if (!project(FS[o], FS[o + 1], FS[o + 2]) || PJ[2] < R + 0.15) continue;
+      const cx = PJ[0], cy = PJ[1], dc = PJ[2], cull = R * ppm / sqrt(dc * dc - R * R);
+      // march each cell's view ray through the depths the outer sphere spans
+      for (let py = max(0, cy - cull) - (max(0, cy - cull) % CELL); py < min(ch, cy + cull); py += CELL) {
+        for (let px = max(0, cx - cull) - (max(0, cx - cull) % CELL); px < min(cw, cx + cull); px += CELL) {
+          const xn = ((px + CELL / 2) / cw - 0.5) * 2 * TANH * asp, yn = (0.5 - (py + CELL / 2) / ch) * 2 * TANH;
+          const dx = F[FX] + F[RX] * xn + F[UX] * yn, dy = F[FY] + F[UY] * yn, dz = F[FZ] + F[RZ] * xn + F[UZ] * yn;
+          for (let z = dc - R; z < dc + R; z += 0.008) {
+            const ex = F[CX] + dx * z - FS[o], ey = F[CY] + dy * z - FS[o + 1], ez = F[CZ] + dz * z - FS[o + 2];
+            if (ex * ex + ey * ey + ez * ez > R * R || hitIn(i, ex, ey, ez) >= 1) continue;
+            const f = HT[0] / len; fxc.fillStyle = ZC[f > 0.2 ? 0 : f < -0.22 ? 2 : 1]; fxc.fillRect(px, py, CELL, CELL); break;
+          }
+        }
+      }
+      const r = hitR(i), w = hitW(i);
+      // the cull sphere and the axis
+      fxc.setLineDash([3, 3]); fxc.lineWidth = 1; fxc.strokeStyle = 'rgba(255,255,255,0.35)';
+      fxc.beginPath(); fxc.arc(cx, cy, cull, 0, TAU); fxc.stroke();
+      if (project(FS[o] - ax * len / 2, FS[o + 1] - ay * len / 2, FS[o + 2] - az * len / 2)) {
+        const tx = PJ[0], ty = PJ[1];
+        if (project(FS[o] + ax * len / 2, FS[o + 1] + ay * len / 2, FS[o + 2] + az * len / 2)) { fxc.strokeStyle = '#fff'; fxc.beginPath(); fxc.moveTo(tx, ty); fxc.lineTo(PJ[0], PJ[1]); fxc.stroke(); }
+      }
+      fxc.setLineDash([]);
+      fxc.fillStyle = '#fff'; fxc.fillText(`${round(r * 100)}x${round(w * 100)} L${round(len * 100)}`, cx, cy - cull - 4);
+    }
+    fxc.restore();
   };
   TT.clean = (v) => { hideGun = v; for (const id of ['x', 'hud', 'fx']) $(id).style.visibility = v ? 'hidden' : ''; };
   TT.floor = floorY;

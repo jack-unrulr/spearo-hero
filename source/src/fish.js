@@ -29,10 +29,23 @@ const SPEC = [
     D: [[0.14, 0], [0.11, 0.055], [0.04, 0.05], [-0.05, 0.05], [-0.15, 0.07], [-0.27, 0.06], [-0.32, 0]], A: [[-0.04, 0], [-0.08, 0.06], [-0.25, 0.055], [-0.31, 0]],
     T: [[-0.34, 0.05], [-0.5, 0.17], [-0.415, 0], [-0.5, -0.17], [-0.34, -0.05]], P: [0.15, -0.02, 0.13], V: [0.1, 0.07] },
 ];
-// the spear's hit capsule: half-length and radius. Targets are a little smaller than they look, so a shot has to be
-// on the fish; protected fish keep a margin, so a careless shot past them still hits them.
+// the spear's hit volume: a capsule along the body, flattened sideways to the fish's thickness (an ellipse in
+// cross-section: hitR up and down, hitW side to side; SPEC w is width / depth). hitH is its half-length. Targets are a
+// little smaller than they look, so a shot has to be on the fish; protected fish keep a margin all round, so a careless
+// shot past them still hits them.
 var AVOID = -1; // the current location's fish to avoid (arcade.js sets it)
 const hitH = (i) => FS[i * FN + fLEN] * 0.38, hitR = (i) => FSP[i] === AVOID ? FS[i * FN + fRAD] + 0.03 : FS[i * FN + fRAD] * 0.85;
+const hitW = (i) => FSP[i] === AVOID ? FS[i * FN + fRAD] * SPEC[FSP[i]].w + 0.03 : FS[i * FN + fRAD] * 0.85 * SPEC[FSP[i]].w;
+// where a point (ex, ey, ez from fish i's centre) sits in its hit volume: below 1 is inside. HT[0] = how far along the
+// axis (clamped to the capsule), + toward the nose
+const HT = new Float64Array(1);
+function hitIn(i, ex, ey, ez) {
+  const o = i * FN, cp = cos(FS[o + fPIT]), cy = cos(FS[o + fYAW]), sy = sin(FS[o + fYAW]), fx = cy * cp, fy = sin(FS[o + fPIT]), fz = sy * cp;
+  let t = ex * fx + ey * fy + ez * fz; const h = hitH(i); t = t > h ? h : t < -h ? -h : t; HT[0] = t;
+  // off the axis: s across the fish (its side vector is horizontal: (-sin yaw, 0, cos yaw)), the rest up and down
+  const px = ex - fx * t, py = ey - fy * t, pz = ez - fz * t, s = pz * cy - px * sy, rw = hitW(i), rh = hitR(i);
+  return s * s / (rw * rw) + (px * px + py * py + pz * pz - s * s) / (rh * rh);
+}
 const NSP = SPEC.length, PS = [0, 0.06, 0.16, 0.3, 0.46, 0.62, 0.78, 0.91, 1];
 // aux: body 1, dorsal / anal fin 0.6 at the base to 0.5 at the edge, tail 0.4 to 0.3, pectoral 0.2 to 0.1
 function meshSpecies(sp) {
