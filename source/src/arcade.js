@@ -509,10 +509,10 @@ function arcStep(dtr) {
 // ---------------------------------------------------------------- tally and leaderboard
 // ---------------------------------------------------------------- leaderboards
 // The world board is a small server (server/ in the repo: a Cloudflare Worker with a D1 database). LB_DEFAULT is where
-// it is deployed; ?lb=<url> overrides it (for testing against a local server). With no server, or when it can't be
+// it is deployed; ?lb=<url> overrides it (for testing against a local server) and ?lb=off turns it off (the tests). With no server, or when it can't be
 // reached, the board is this device's own (localStorage). One board per location. Names: 1-7 of A-Z and 0-9.
-const LB_DEFAULT = ''; // e.g. 'https://spearo-hero-scores.<your-subdomain>.workers.dev', after `npm run deploy` in server/
-const LBU = (new URLSearchParams(location.search).get('lb') || LB_DEFAULT).replace(/\/$/, ''), NAMEN = 7;
+const LB_DEFAULT = 'https://spearo-hero-scores.spearo-hero-scores.workers.dev'; // the deployed server (server/, `npm run deploy`)
+const LBQ = new URLSearchParams(location.search).get('lb'), LBU = (LBQ === 'off' ? '' : LBQ || LB_DEFAULT).replace(/\/$/, ''), NAMEN = 7;
 const lbKey = () => 'spearo.scores.' + LOC.id;
 const lbLoad = () => { try { const v = JSON.parse(localStorage.getItem(lbKey())); return Array.isArray(v) ? v : []; } catch { return []; } };
 const lbSave = (v) => { try { localStorage.setItem(lbKey(), JSON.stringify(v)); } catch {} };

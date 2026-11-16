@@ -15,7 +15,7 @@ const snap = async (name) => { if (shots) await c.shot(path.join(shots, name + '
 
 // LB=<url> runs against a leaderboard server (e.g. `npm run dev` in server/ -> http://localhost:8787)
 const LB = process.env.LB || '';
-await c.goto(new URL('../../dev.html', import.meta.url).href + (LB ? '?lb=' + encodeURIComponent(LB) : ''));
+await c.goto(new URL('../../dev.html', import.meta.url).href + '?lb=' + (LB ? encodeURIComponent(LB) : 'off')); // never the real board
 await c.waitFor('window.TT && TT.ready && TT.arc && document.body.className !== "l"');
 await c.ev('localStorage.removeItem("spearo.scores.tofino")');
 

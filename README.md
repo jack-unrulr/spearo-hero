@@ -82,7 +82,8 @@ npm run db:init:remote
 npm run deploy                            # prints https://spearo-hero-scores.<you>.workers.dev
 ```
 
-Then set `LB_DEFAULT` near the leaderboard section of `source/src/arcade.js` to that URL and rebuild. The server
+Then set `LB_DEFAULT` near the leaderboard section of `source/src/arcade.js` to that URL and rebuild. (It is
+deployed at `https://spearo-hero-scores.spearo-hero-scores.workers.dev`.) `?lb=off` on the page turns the world board off. The server
 checks names and stats, rejects impossible scores and rate-limits each address; it can't make faking a score
 impossible, so treat the board as a fun one.
 

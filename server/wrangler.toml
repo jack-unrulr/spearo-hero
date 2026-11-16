@@ -8,4 +8,4 @@ compatibility_date = "2025-06-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "spearo-scores"
-database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+database_id = "2974a67a-c37b-483e-8a81-8bf0a8d346f8"
